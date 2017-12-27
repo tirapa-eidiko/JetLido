@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <catch-exception-strategy name="exceptionCatch_Exception_Strategy">
+        <choice doc:name="Choice">
+            <when expression="#[ exception.message.toString().contains('import java.text.*;')]">
+                <set-variable variableName="dateexception" value="#['TimeStamp ofthe given dates is incorrect']" doc:name="Variable"/>
+            </when>
+            <when expression="#[exception.message.toString().contains('flowVars...data')]">
+                <set-variable variableName="arr" value="#[new java.util.ArrayList()]" doc:name="Variable"/>
+                <foreach collection="#[sessionVars.exception]" doc:name="For Each">
+                    <choice doc:name="Choice">
+                        <when expression="#[payload!='null']">
+                            <expression-component doc:name="Expression"><![CDATA[flowVars.arr.add(payload)]]></expression-component>
+                        </when>
+                    </choice>
+                </foreach>
+            </when>
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.dateexception!=null]">
+                <set-payload value="#[flowVars.dateexception]" doc:name="Set Payload"/>
+            </when>
+            <when expression="#[flowVars.arr.size()!=0]">
+                <set-payload value="#[flowVars.arr] values are not correct" doc:name="Set Payload"/>
+            </when>
+        </choice>
+        <set-attachment attachmentName="exception mail" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="fule information exception" responseTimeout="10000" doc:name="SMTP"/>
+    </catch-exception-strategy>
+</mule>
