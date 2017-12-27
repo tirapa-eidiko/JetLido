@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\FromLido Outbound" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="eidiko" password="sarasu10" doc:name="Oracle Configuration"/>
+    <file:connector name="File1" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\LIDO\ERROR" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <flow name="otstrackFlow">
+        <wmq:inbound-endpoint queue="remote" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload is stored inVariable as string"/>
+        <expression-component doc:name="assignng info type"><![CDATA[String s=payload;
+flowVars.Infotype=s.substring(0,4);
+flowVars.latest=s.substring(4,flowVars.data.length());]]></expression-component>
+        <expression-filter expression="#[flowVars.Infotype==&quot;TRCK&quot;]" doc:name="Expression"/>
+        <expression-component doc:name="Expression"><![CDATA[String s=flowVars.latest
+flowVars.Dateofmessage=s.substring(0,9);
+flowVars.TimeofmessageHHMMSS=s.substring(9,15);
+flowVars.Typeofmessage=s.substring(15,19);
+flowVars.Separator1=s.substring(19,25);
+flowVars.TrackIndicator=s.substring(25,26);
+flowVars.TrackIdentificationNo=s.substring(26,30);
+flowVars.Separator2=s.substring(30,36);
+flowVars.TrackvalidityFromDateUTC=s.substring(36,45);
+flowVars.TrackvalidityFromTimeUTC=s.substring(45,49);
+flowVars.TrackvalidityTillDateUTC=s.substring(49,58);
+flowVars.TrackvalidityTillTimeUTC=s.substring(58,62);
+flowVars.Separator3=s.substring(62,68);
+flowVars.Trackmessageslengthinbytes=s.substring(68,72);
+flowVars.Separator4=s.substring(72,78);
+flowVars.TRCKmessagetext=s.substring(78,s.length());]]></expression-component>
+        <expression-component doc:name="Expression"><![CDATA[import java.util.*;
+ import java.text.*;
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+Date date = sdff.parse(flowVars.TrackvalidityFromDateUTC);
+Date date = sdff.parse(flowVars.TrackvalidityTillDateUTC);
+
+]]></expression-component>
+        <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="/r" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                <db:parameterized-query><![CDATA[insert INTO OTS values(#[flowVars.Infotype],#[flowVars.Dateofmessage],#[flowVars.TimeofmessageHHMMSS],#[flowVars.Typeofmessage],#[flowVars.Separator1],#[flowVars.TrackIndicator],#[flowVars.TrackIdentificationNo],#[flowVars.Separator2],#[flowVars.TrackvalidityFromDateUTC],#[flowVars.TrackvalidityFromTimeUTC],#[flowVars.TrackvalidityTillDateUTC],#[flowVars.TrackvalidityTillTimeUTC],#[flowVars.Separator3],#[flowVars.Trackmessageslengthinbytes],#[flowVars.Separator4],#[flowVars.TRCKmessagetext])]]></db:parameterized-query>
+            </db:insert>
+        </scatter-gather>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <choice doc:name="Choice">
+                <when expression="#[exception.message.toString().contains('java.sql.SQLException')]">
+                    <logger message="database error " level="INFO" doc:name="Logger"/>
+                    <set-payload value="#['database connection  error']" doc:name="Set Payload"/>
+                </when>
+                <when expression="#[exception.message.toString().contains('import java.text.*;')]">
+                    <logger message="date error" level="INFO" doc:name="Logger"/>
+                    <set-payload value="#['date error']" doc:name="Set Payload"/>
+                </when>
+                <otherwise>
+                    <logger message="other than database error" level="INFO" doc:name="Logger"/>
+                </otherwise>
+            </choice>
+            <file:outbound-endpoint path="/r" connector-ref="File1" responseTimeout="10000" doc:name="File"/>
+            <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+            <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prashanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" responseTimeout="10000" doc:name="SMTP"/>
+            <logger level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+</mule>
