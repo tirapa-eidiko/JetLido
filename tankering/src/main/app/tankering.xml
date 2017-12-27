@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <sftp:connector name="SFTP" validateConnections="true" archiveDir="C:\Users\db2admin.bandaru-PC\Desktop\MqJars" autoDelete="false" doc:name="SFTP" pollingFrequency="1000000"/>
+   
+   <sftp:connector name="SFTP1" validateConnections="true" autoDelete="false" doc:name="SFTP" archiveDir="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\Tankering\lido">
+        <reconnect/>
+    </sftp:connector>
+   <spring:beans>
+        <spring:bean id="id1" name="invoke" class="com.app.Core"/>
+    </spring:beans>
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="AA" channel="AATOBB" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ">
+        <reconnect/>
+    </wmq:connector>
+    <smtp:gmail-connector name="Gmail1" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+      <flow name="tankeringFlow">
+        <sftp:inbound-endpoint connector-ref="SFTP" host="localhost" port="2222" path="/Tankering/INPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+        <set-variable variableName="originalfile" value="#[message.inboundProperties.originalFilename]" doc:name="Variable"/>
+        <set-session-variable variableName="formateMessage" value="#[&quot;&quot;]" doc:name="Session Variable"/>
+        <set-session-variable variableName="errorDetails" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <expression-component doc:name="Expression"><![CDATA[import java.util.*; import java.text.*;
+
+flowVars.data=payload.split("\n");
+flowVars.data1=payload.substring(0,payload.indexOf("\n",0));
+flowVars.data2=payload.substring(flowVars.data1.length()+1);
+flowVars.outdata="";
+flowVars.data1=flowVars.data1.split(",");
+
+flowVars.data2=flowVars.data2.split("\n");
+flowVars.sampleData=["TKR","27APR1996133023","670","ABCDEFGHI J","FRAHA","FRAHA","LHA","MAXVTA","01MAY1996","31MAY1996","A306","ABCD E"];
+flowVars.sampleData1=["1","FRAHA","FRAHA","LHA","MAXVTA","01MAY1996","31MAY1996","A306"]
+flowVars.msgType = "TKR" ;
+
+DateFormat dateFormat = new SimpleDateFormat("ddMMMyyyyHHmmss");
+Date date = new Date();
+flowVars.timestampInGMT=dateFormat.format(date);
+flowVars.numberOfLegsInMessage=" 21";
+flowVars.separator="           ";
+flowVars.formateMessage="";
+flowVars.formateMessage=flowVars.formateMessage+flowVars.sampleData[0]+flowVars.timestampInGMT+flowVars.numberOfLegsInMessage+flowVars.separator;
+
+
+
+
+
+]]></expression-component>
+
+
+        <foreach collection="#[flowVars.data2]" doc:name="For Each">
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+            </dw:transform-message>
+
+            <foreach collection="#[payload]" counterVariableName="index" doc:name="For Each">
+                <set-variable variableName="var1" value="#[payload.split(&quot;,&quot;)]" doc:name="Variable"/>
+                <expression-component doc:name="DataValidation"><![CDATA[for(int i=1;i<flowVars.var1.length;i++){
+int j=flowVars.sampleData1[i].length()-flowVars.var1[i].length();
+for(int k=1;k<=j;k++){
+flowVars.var1[i]=flowVars.var1[i]+" ";
+}
+}
+
+
+
+
+
+if (flowVars.var1[1].matches("^[A-Za-z ]{5}$")){
+flowVars.var1[1]=flowVars.var1[1];
+}else{
+flowVars.departureError="true";
+sessionVars.errorDetails.add("please check departure airport value "+flowVars.counter+" row of excell file data \n");
+}
+if(flowVars.var1[2].matches("^[A-Za-z ]{5}$")){
+flowVars.var1[2]=flowVars.var1[2]
+}else{
+flowVars.destinationError="true";
+sessionVars.errorDetails.add("please check destination airport value "+flowVars.counter+" row of excell file data \n");
+}
+if(flowVars.var1[3].matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.var1[3]=flowVars.var1[3];
+}else{
+flowVars.airlineError="true";
+sessionVars.errorDetails.add("please check airline  value "+flowVars.counter+" row of excell file data \n");
+}
+
+if(flowVars.var1[4].trim().matches("^(MAXV|MINV|MAXH|MINH|MAXB|MINB){1}$")&&(flowVars.var1[4].length()==6)){
+flowVars.var1[4]=flowVars.var1[4];
+}else{
+flowVars.tankeringRecError="true";
+sessionVars.errorDetails.add("please check tankering recommondation value "+flowVars.counter+" row of excell file data \n");
+}
+
+if(flowVars.var1[5].trim().matches("^[A-Za-z0-9-]{8,9}$")){
+flowVars.var1[5]=flowVars.var1[5].trim();
+
+}else{
+flowVars.ValidformError="true";
+sessionVars.errorDetails.add("please check from date  value valid or not "+flowVars.counter+" row of excell file data \n");
+}
+
+if(flowVars.var1[6].trim().matches("^[A-Za-z0-9-]{8,9}$")){
+flowVars.var1[6]=flowVars.var1[6];
+
+}else{
+flowVars.validtillError="true";
+sessionVars.errorDetails.add("please check Valid till date value "+flowVars.counter+" row of excell file data \n");
+}
+
+if(flowVars.var1[7].trim().matches("^[A-Z0-9]{4}$")||flowVars.var1[7].trim()==""){
+flowVars.var1[7]=flowVars.var1[7];
+}else{
+flowVars.aircraftTypeError="true";
+sessionVars.errorDetails.add("please check air craft details  "+flowVars.counter+" row of excell file data \n");
+}
+flowVars.seperator="      ";
+
+
+
+
+
+ ]]></expression-component>
+
+                <expression-component doc:name="DateValidation"><![CDATA[import java.util.*; import java.text.*;
+SimpleDateFormat sdff = new SimpleDateFormat("dd-MMM-yy");
+sdff.setLenient(false);
+
+Date date = sdff.parse(flowVars.var1[5]);
+
+Date date = sdff.parse(flowVars.var1[6]);
+
+
+for(int i=1;i<flowVars.var1.length;i++){
+flowVars.formateMessage=flowVars.formateMessage +flowVars.var1[i] ;
+}
+flowVars.formateMessage=flowVars.formateMessage+flowVars.seperator;
+
+
+
+
+]]></expression-component>
+
+
+            </foreach>
+        </foreach>
+
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.errorDetails.size()!=0]">
+                <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" outputPattern="#[flowVars.originalfile]" host="localhost" port="2222" path="/Tankering/ErrorFormate" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+
+                <set-variable variableName="variable to rise exception" value="#[payload[data][data]]" doc:name="Variable"/>
+            </when>
+            <otherwise>
+                <set-variable variableName="responceMessage" value="#[flowVars.formateMessage.replaceAll(&quot;\r&quot;,&quot;&quot;)]" doc:name="Responce data"/>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.responceMessage]]></dw:set-payload>
+                </dw:transform-message>
+
+            </otherwise>
+        </choice>
+        <expression-filter expression="#[flowVars.filter!=&quot;false&quot;]" doc:name="Expression"/>
+        <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\Tankering\backup" outputPattern="#[flowVars.originalfile+&quot;.txt&quot;]" responseTimeout="10000" doc:name="File"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.responceMessage]]></dw:set-payload>
+        </dw:transform-message>
+        <scatter-gather doc:name="Scatter-Gather">
+
+            <wmq:outbound-endpoint queue="AA.RQ" connector-ref="WMQ" doc:name="WMQ"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" host="localhost" port="2222" responseTimeout="10000" doc:name="SFTP" connector-ref="SFTP1" password="password" path="/Tankering/lido" user="tester" />
+            <wmq:outbound-endpoint queue="AA.RQ" connector-ref="WMQ" doc:name="WMQ"/>
+        </scatter-gather>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <exception-strategy ref="Global_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+        
+
+
+    </flow>
+    <flow name="tankeringFlow1">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+           <scatter-gather doc:name="Scatter-Gather">
+                <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\Tankering\logfiles" outputPattern="error.txt" responseTimeout="10000" doc:name="File"/>
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\Tankering\mail" responseTimeout="10000" doc:name="File" outputPattern="errorMessage.txt"/>
+</scatter-gather>
+        <set-attachment attachmentName="attach" value="#[flowVars.errorMessage] in a given file" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="venkat212.eidiko@gmail.com" password="8374945152" connector-ref="Gmail1" to="venkat212.eidiko@gmail.com" from="venkat212.eidiko@gmail.com" subject="error" responseTimeout="10000" doc:name="SMTP"/>
+    </flow>
+</mule>
