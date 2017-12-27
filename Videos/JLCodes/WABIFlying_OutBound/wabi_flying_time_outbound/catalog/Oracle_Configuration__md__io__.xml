@@ -1,0 +1,101 @@
+<metadata__cache__entry>
+  <version>5.2.0.0</version>
+  <connectorName>Oracle_Configuration</connectorName>
+  <metadataIo class="tree-map">
+    <entry>
+      <string>http://www.mulesoft.org/schema/mule/db/insert</string>
+      <map>
+        <entry>
+          <string>insert into fuelinformation values(#[flowVars.Info_type],#[flowVars.AirLineDesignator],#[flowVars.flightNumber],#[flowVars.OperationalSuffix],#[flowVars.dateoforiginutc],#[flowVars.dateoforiginlocal],#[flowVars.dateofoperationutc],#[flowVars.dateofoperationlocal],#[flowVars.departureofairportiata],#[flowVars.destinationairportiata],#[flowVars.masteroffice],#[flowVars.responsibleoffice1],#[flowVars.flightduplicationnumber2],#[flowVars.BriefingSequenceNo3],#[flowVars.TransmissionNo4],#[flowVars.AircraftoperatorIATA4],#[flowVars.Separator1],#[flowVars.Unitofmeasure],#[flowVars.Fuelorderstatus],#[flowVars.PlannedTaxifuel],#[flowVars.PlannedTripfuel],#[flowVars.Blockfuel],#[flowVars.PlannedTripTime ],#[flowVars.PlannedTaxiTime  ],#[flowVars.EstimTotalFlightTime],#[flowVars.TankCapacity],#[flowVars.ACRegistration],#[flowVars.ReclearanceIndicator],#[flowVars.MaxLandingWeight ],#[flowVars.MaxTakeoffWeight],#[flowVars.MaxTaxiWeightalwaysasmaintainedforacft],#[flowVars.PlannedZFW],#[flowVars.MaxZFW],#[flowVars.SupplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTruckIndicator5],#[flowVars.FuelTruckStandby5],#[flowVars.RefuelingQuantity5],#[flowVars.WABRevisionNumber6],#[flowVars.OFPNumber6],#[flowVars.PlannedLoad6],#[flowVars.NegativeDeltaZFW6],#[flowVars.PositiveDeltaZFW6],#[flowVars.Separator2],#[flowVars.ReducedLandingWeight78],#[flowVars.ReducedTakeoffWeight79])</string>
+          <org.mule.tooling.metadata.cache.DefaultMetadataCacheEntry>
+            <output class="org.mule.common.metadata.DefaultMetaData">
+              <payload class="org.mule.common.metadata.DefaultSimpleMetaDataModel">
+                <dataType>DOUBLE</dataType>
+                <metaDataModelPropertiesManager>
+                  <properties/>
+                </metaDataModelPropertiesManager>
+              </payload>
+              <properties>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>OUTBOUND</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>RECORD</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>FLOW</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>INBOUND</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>SESSION</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+              </properties>
+            </output>
+          </org.mule.tooling.metadata.cache.DefaultMetadataCacheEntry>
+        </entry>
+        <entry>
+          <string>insert into wabiflyingtime values(#[flowVars.Info_type],#[flowVars.AirLineDesignator],#[flowVars.flightNumber],#[flowVars.OperationalSuffix],#[flowVars.dateoforiginutc],#[flowVars.dateoforiginlocal],#[flowVars.dateofoperationutc],#[flowVars.dateofoperationlocal],#[flowVars.departureofairportiata],#[flowVars.destinationairportiata],#[flowVars.masteroffice],#[flowVars.responsibleoffice1],#[flowVars.flightduplicationnumber2],#[flowVars.BriefingSequenceNo3],#[flowVars.TransmissionNo4],#[flowVars.AircraftoperatorIATA4],#[flowVars.Separator1],#[flowVars.Unitofmeasure],#[flowVars.Fuelorderstatus],#[flowVars.PlannedTaxifuel],#[flowVars.PlannedTripfuel],#[flowVars.Blockfuel],#[flowVars.PlannedTripTime ],#[flowVars.PlannedTaxiTime  ],#[flowVars.EstimTotalFlightTime],#[flowVars.TankCapacity],#[flowVars.ACRegistration],#[flowVars.ReclearanceIndicator],#[flowVars.MaxLandingWeight ],#[flowVars.MaxTakeoffWeight],#[flowVars.MaxTaxiWeightalwaysasmaintainedforacft],#[flowVars.PlannedZFW],#[flowVars.MaxZFW],#[flowVars.SupplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTruckIndicator5],#[flowVars.FuelTruckStandby5],#[flowVars.RefuelingQuantity5],#[flowVars.WABRevisionNumber6],#[flowVars.OFPNumber6],#[flowVars.PlannedLoad6],#[flowVars.NegativeDeltaZFW6],#[flowVars.PositiveDeltaZFW6],#[flowVars.Separator2],#[flowVars.ReducedLandingWeight78],#[flowVars.ReducedTakeoffWeight79])</string>
+          <org.mule.tooling.metadata.cache.DefaultMetadataCacheEntry>
+            <output class="org.mule.common.metadata.DefaultMetaData">
+              <payload class="org.mule.common.metadata.DefaultSimpleMetaDataModel">
+                <dataType>DOUBLE</dataType>
+                <metaDataModelPropertiesManager>
+                  <properties/>
+                </metaDataModelPropertiesManager>
+              </payload>
+              <properties>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>OUTBOUND</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>RECORD</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>FLOW</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>INBOUND</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+                <entry>
+                  <org.mule.common.metadata.MetaDataPropertyScope>SESSION</org.mule.common.metadata.MetaDataPropertyScope>
+                  <org.mule.common.metadata.MetaDataProperties>
+                    <fields/>
+                  </org.mule.common.metadata.MetaDataProperties>
+                </entry>
+              </properties>
+            </output>
+          </org.mule.tooling.metadata.cache.DefaultMetadataCacheEntry>
+        </entry>
+      </map>
+    </entry>
+  </metadataIo>
+</metadata__cache__entry>
