@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd">
+    <file:connector name="File" readFromDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\r" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File1" outputPattern="1.txt" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\m" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="eidiko" password="sarasu10" doc:name="Oracle Configuration"/>
+    <file:connector name="File2" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\LIDO\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    <sftp:connector name="SFTP" validateConnections="true" duplicateHandling="append" autoDelete="false" doc:name="SFTP"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <flow name="flightweatheroutboundFlow">
+        <wmq:inbound-endpoint queue="remote" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload is stored as string in data var"/>
+        <expression-component doc:name="assigning values to var and spliting by'='"><![CDATA[flowVars.MessageIdent=payload.substring(0,4);
+flowVars.NoofWXMessages=payload.substring(4,8);
+flowVars.modifiedpayload=payload.substring(8,flowVars.data.length());
+flowVars.multiple=flowVars.modifiedpayload.split('=');]]></expression-component>
+        <foreach collection="#[flowVars.multiple]" doc:name="For Each">
+            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            <expression-component doc:name="validation"><![CDATA[payload=payload.trim();
+flowVars.error="";
+flowVars.AirportICAOCode1=payload.substring(0,4);
+if(flowVars.AirportICAOCode1.matches(".*[a-zA-Z].*")){
+flowVars.AirportICAOCode=flowVars.AirportICAOCode1;
+}
+else{
+flowVars.error=flowVars.counter+'AirportICAOCode';
+}
+flowVars.AirportCodeIATA1=payload.substring(4,9);
+if(flowVars.AirportCodeIATA1.matches(".*[a-zA-Z].*")){
+flowVars.AirportCodeIATA=flowVars.AirportCodeIATA1;
+}
+else{
+flowVars.error=flowVars.counter+'AirportCodeIATA';
+}
+flowVars.WeatherIdent1=payload.substring(9,11);
+if(flowVars.WeatherIdent1.matches(".*[a-zA-Z].*")){
+flowVars.WeatherIdent=flowVars.WeatherIdent1;
+}
+else{
+flowVars.error=flowVars.counter+'WeatherIdent';
+}
+flowVars.TimeofObservation1=payload.substring(11,17);
+if(flowVars.TimeofObservation1.matches(".*[1-9].*")){
+flowVars.TimeofObservation=flowVars.TimeofObservation1;
+}
+else{
+flowVars.error=flowVars.counter+'TimeofObservation';
+}
+flowVars.remark=payload.substring(17,20);
+flowVars.InputOffice1=payload.substring(20,21);
+if(flowVars.InputOffice1.matches(".*[a-zA-Z].*")){
+flowVars.InputOffice=flowVars.InputOffice1;
+}
+else{
+flowVars.error=flowVars.counter+'InputOffice';
+}
+flowVars.StartofValidity=payload.substring(21,27);
+flowVars.EndofValidity=payload.substring(27,33);
+flowVars.WeatherText=payload.substring(33,payload.length());
+
+]]></expression-component>
+            <choice doc:name="checking exception raised or not">
+                <when expression="flowVars.error==&quot;&quot;;">
+                    <scatter-gather doc:name="Scatter-Gather">
+                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                            <db:parameterized-query><![CDATA[insert INTO FlghtWeather values(#[flowVars.AirportICAOCode],#[flowVars.AirportCodeIATA],#[flowVars.WeatherIdent],#[flowVars.TimeofObservation],#[flowVars.remark],#[flowVars.InputOffice],#[flowVars.StartofValidity],#[flowVars.EndofValidity],#[flowVars.WeatherText])]]></db:parameterized-query>
+                        </db:insert>
+                        <processor-chain>
+                            <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="weather.txt" host="localhost" port="24" path="/ravi/m" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                        </processor-chain>
+                    </scatter-gather>
+                </when>
+                <otherwise>
+                    <set-variable variableName="error" value="#[payload][pvgrk]" doc:name="raising an exception"/>
+                </otherwise>
+            </choice>
+        </foreach>
+        <logger message="inserted data" level="INFO" doc:name="Logger"/>
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy doc:name="Catch Exception Strategy">
+                <set-payload value="#[flowVars.error] is wrong" doc:name="Set Payload"/>
+                <file:outbound-endpoint path="/r" connector-ref="File2" responseTimeout="10000" doc:name="error cause file is stored"/>
+                <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prashanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error raised" responseTimeout="10000" doc:name="sending mail to concern client"/>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+    </flow>
+</mule>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+ 
+     
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="eidiko" password="sarasu10" doc:name="Oracle Configuration"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <file:connector name="File" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\LIDO\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP" validateConnections="true" doc:name="SFTP"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    
+    <flow name="performancefactorFlow">
+        <wmq:inbound-endpoint queue="re" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload saved  in Variable as string"/>
+        <expression-component doc:name="splitting payload by /n"><![CDATA[String s=payload;
+flowVars.modified=s.split('\n');
+flowVars.t=flowVars.modified[0];]]></expression-component>
+        <foreach collection="#[flowVars.modified]" doc:name="For Each">
+            <choice doc:name="Choice">
+                <when expression="#[payload!=flowVars.t]">
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+                    <expression-component doc:name="Expression"><![CDATA[String s=payload;
+flowVars.APF=s.substring(0,12);
+flowVars.month=s.substring(12,46);
+flowVars.numberof=s.substring(46,50);
+]]></expression-component>
+                    <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                        <db:parameterized-query><![CDATA[insert INTO performance values(#[flowVars.APF],#[flowVars.month],#[flowVars.numberof])]]></db:parameterized-query>
+                    </db:insert>
+                </when>
+                <otherwise>
+                    <logger level="INFO" doc:name="Logger"/>
+                </otherwise>
+            </choice>
+        </foreach>
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="/r" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="outbound.txt" host="localhost" port="24" path="/ravi/JET-LIDO/JET/FromLido Outbound" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy when="#[exception.causedBy(java.net.ConnectException)]" doc:name="Catch Exception Strategy">
+                <set-payload value="#['sftp server is down']" doc:name="Set Payload"/>
+                <file:outbound-endpoint path="/r" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+                <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prashnath9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error" responseTimeout="10000" doc:name="SMTP"/>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+
+    </flow>
+</mule>
