@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <sftp:connector name="SFTP" validateConnections="true" archiveDir="C:\Users\db2admin.bandaru-PC\Desktop\MqJars" autoDelete="false" doc:name="SFTP" pollingFrequency="1000000"/>
+    <spring:beans>
+        <spring:bean id="id" name="id" class="app.Core"/>
+    </spring:beans>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="AA" channel="AATOBB" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ">
+        <reconnect/>
+    </wmq:connector>
+    <sftp:connector name="SFTP1" validateConnections="true" autoDelete="false" doc:name="SFTP">
+        <reconnect/>
+    </sftp:connector>
+    
+    <flow name="crew_assignFlow">
+        <sftp:inbound-endpoint connector-ref="SFTP" host="localhost" port="2222" path="/CrewAssignment/INPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <set-variable variableName="name" value="#[message.inboundProperties.originalFilename]" doc:name="Variable"/>
+        <set-variable variableName="Indata" value="#[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+        <set-session-variable variableName="errorMessage" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload.contains(&quot;:&quot;)]">
+                <expression-component doc:name="Expression"><![CDATA[flowVars.Indata=flowVars.Indata.replace("\n",",");
+flowVars.lastindex=flowVars.Indata.lastIndexOf(",");
+flowVars.Indata=flowVars.Indata.substring(0,flowVars.lastindex);
+flowVars.Indata=flowVars.Indata.replaceAll("PREVFLIGHT: ","");
+flowVars.Indata=flowVars.Indata.replaceAll("NEXTFLIGHT: ","");
+flowVars.data2=flowVars.Indata.split(",",-1);
+]]></expression-component>
+            </when>
+            <otherwise>
+                <expression-component doc:name="Expression"><![CDATA[flowVars.data2=flowVars.Indata.split(",",-1);]]></expression-component>
+            </otherwise>
+        </choice>
+
+        <expression-component doc:name="DataValidation"><![CDATA[
+if(payload.length()<=160){
+if(flowVars.data2.length==32){
+flowVars.data1=["CMS","03APR2017104901","9W1","00791","A","04APR2017","DELRT","IDRRT","1","SIDDHARTH KHATRIAAAA","E","N","01","1","01","OD","10624245","34","9WA","78923","A","04APR2017","IDRER","01","OD","9WA","12345","A","04APR2017","IDRER","01","OD"];
+for(int i=0; i<= flowVars.data2.length-1 ;i++){
+    int j=flowVars.data1[i].length()-flowVars.data2[i].length();
+ for(int k=1;k<=j;k++){
+ if(flowVars.data2[i].matches("^[0-9 ]{3,5}$")){
+flowVars.data2[i]=" "+flowVars.data2[i];
+}else{
+   flowVars.data2[i]=flowVars.data2[i]+" ";
+}
+}
+flowVars.data2[i]=flowVars.data2[i];
+}
+}else{  flowVars.action="false";}
+}else{ flowVars.action="false";}
+
+
+if(flowVars.action != "false"){
+if((flowVars.data2[0].length()==3) && (flowVars.data2[0].contains("CMS"))){
+flowVars.message_Type=flowVars.data2[0];
+flowVars.action="true";
+}
+else{
+flowVars.errorMsgType = "true";
+sessionVars.errorMessage.add("Message Type value must be CMS only");
+}
+
+if((flowVars.data2[1].length()== 15)){
+flowVars.timestamp_In_GMT=flowVars.data2[1];
+}else{
+flowVars.errordate="true";
+sessionVars.errorMessage.add("TimeStamp value not correct .please verify formate match ddMMMyyyyHHmmss only");
+}
+
+
+if(flowVars.data2[2].matches("^[A-Z0-9 ]{3}$") ){
+if(flowVars.data2[2].trim()=="9W" || flowVars.data2[2].trim()=="S2"){
+flowVars.IATA_Airline_Designator=flowVars.data2[2];
+}else{flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("Airline Designator value must be 9W or S2");
+}
+}else{flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("Airline Designator value must be 9W or S2");
+}
+
+
+if(flowVars.data2[3].matches("^[A-Za-z0-9 ]{5}$")){
+flowVars.Flight_no=flowVars.data2[3];
+}else{flowVars.errorFlight="true";
+sessionVars.errorMessage.add("please check Flight no ");
+}
+
+
+if(flowVars.data2[4].trim().matches("^[A-Z]{1}$")||flowVars.data2[4].trim()==""){
+flowVars.Operational_Suffix=flowVars.data2[4];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Operational suffix value wrong ");
+}
+
+if(flowVars.data2[5].length()==9){
+flowVars.Date_of_Origin=flowVars.data2[5];
+}else{flowVars.errordate="true";
+sessionVars.errorMessage.add("Origin date value not correct .please verify formate match ddMMMyyyy only");
+}
+
+
+if(flowVars.data2[6].matches("^[A-Za-z ]{5}$")){
+flowVars.Departure_airport=flowVars.data2[6];
+
+}else{flowVars.errorDest="true";
+sessionVars.errorMessage.add("Departure Airport value wrong ");
+}
+
+if(flowVars.data2[7].matches("^[A-Za-z ]{5}$")){
+flowVars.Destination_airport=flowVars.data2[7];
+}else{flowVars.errorDest="true";
+sessionVars.errorMessage.add("Destination Airport value wrong ");
+}
+
+if(flowVars.data2[8].trim()==1){
+flowVars.Duplicate_no=flowVars.data2[8];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("duplicate no  value 1 ");
+}
+
+if(flowVars.data2[9].matches("^[A-Za-z .]{20}$")){
+flowVars.Name_of_Pilot_in_Command=flowVars.data2[9];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Name of pilot commander is not valid");
+}
+
+if(flowVars.data2[10].trim().matches("^[A-E]{1}$")||flowVars.data2[10].trim()==""){
+  flowVars.WX_Qualification_of_Pilot=flowVars.data2[10];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Wx Qualification of pilot value wrong ");
+}
+
+
+if(flowVars.data2[11].matches("^[N,Y]{1}$")||flowVars.data2[11].trim()==""){
+ flowVars.PIC_First_leg_Indicator=flowVars.data2[11];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("PIC first leg indicator  value wrong ");
+}
+
+if((flowVars.data2[12].trim()=="")||(flowVars.data2[12].matches("^[1 ]{2}$"))){
+flowVars.Leg_no_of_flight_in_rotation=flowVars.data2[12].trim();
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Leg no of flight in roatation value wrong ");
+}
+
+if(flowVars.data2[13].matches("^[1-9 ]{2}$")||flowVars.data2[13].trim()==""){
+flowVars.No_of_cockpit_cabin_crew=flowVars.data2[13];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("No of cockpit crew cabin value wrong ");
+}
+
+if(flowVars.data2[14].matches("^([01-99 ]){2}$")||flowVars.data2[14].trim()=="  "){
+flowVars.No_of_cabin_crew=flowVars.data2[14];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("No of cabin crew value wrong ");
+}
+
+
+if (flowVars.data2[15].trim().matches("^(OD|DH|SB)$")||flowVars.data2[15].trim()==""){
+flowVars.Element_type_indicator=flowVars.data2[15];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Please check element type indicator value must be OD or DH or SB  ");
+}
+
+
+if(flowVars.data2[16].matches("^[A-Za-z0-9]{8}$")){
+flowVars.Staff_Identification_no=flowVars.data2[16];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Staff Indentification value invalid ");
+}
+
+if(  flowVars.data2[17].trim().matches("^[0-99 ]{1}$")||flowVars.data2[17].trim()==""){
+flowVars.Duty_Position =flowVars.data2[17] ;
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Duty position of employees value wrong ");
+}
+
+
+if(flowVars.data2[18].matches("^[A-Za-z0-9 ]{3}$")||flowVars.data2[18].trim()==""){
+if(flowVars.data2[18].trim()=="9W" || flowVars.data2[18].trim()=="S2" ||flowVars.data2[18].trim()==""){
+flowVars.PL_Airline_Designator =flowVars.data2[18];
+}else {flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("PL-Airline Designator value must be 9W or S2");
+}
+}else {flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("PL-Airline Designator value must be 9W or S2");
+}
+
+if(flowVars.data2[19].matches("^[A-Za-z0-9 ]{5}$") || flowVars.data2[19].trim()==""){
+flowVars.PL_Flight_no =flowVars.data2[19];
+}else {flowVars.errorFlight="true";
+sessionVars.errorMessage.add("please check PL- Flight no ");
+}
+
+if(flowVars.data2[20].trim().matches("^[A-Z]{1}$")||flowVars.data2[20].trim()==""){
+flowVars.PL_Operational_Suffix =flowVars.data2[20];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Previous Leg - Operational suffix value wrong ");
+}
+
+
+if(flowVars.data2[21].length()==9 || flowVars.data2[21].trim()==""){
+flowVars.PL_Date_of_Origin=flowVars.data2[21];
+}else{flowVars.errordate="true";
+sessionVars.errorMessage.add("PL-Origin date value not correct .please verify formate match ddMMMyyyy only");
+}
+
+
+if(flowVars.data2[22].matches("^[A-Za-z ]{5}$")||flowVars.data2[22].trim()==""){
+flowVars.PL_Departure_airport=flowVars.data2[22];
+}else{flowVars.errorDest="true";
+sessionVars.errorMessage.add("Previous Leg - Departure Airport value wrong ");
+}
+
+if(flowVars.data2[23].matches("^[0-1 ]{2}$")||flowVars.data2[23].trim()==""){
+flowVars.PL_Leg_no_of_flight_in_rotation=flowVars.data2[23];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("PreviousLeg - no of flights in roatation  value wrong ");
+}
+
+if(flowVars.data2[24].trim().matches("^(OD|DH|SB)$")||flowVars.data2[24].trim()==""||flowVars.data2[24].length()==2){
+flowVars.PL_Element_type_indicator=flowVars.data2[24];
+}else{flowVars.errorFlag="true";}
+
+if(flowVars.data2[25].matches("^[A-Za-z0-9 ]{3}$")||flowVars.data2[26].trim()==""){
+if(flowVars.data2[25].trim()=="9W" || flowVars.data2[25].trim()=="S2" ||flowVars.data2[25].trim()==""){
+flowVars.NL_Airline_Designator=flowVars.data2[25];
+}else {flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("NL-Airline Designator value must be 9W or S2");
+}
+}else {flowVars.error_air_disgn="true";
+sessionVars.errorMessage.add("NL-Airline Designator value must be 9W or S2");
+}
+
+if(flowVars.data2[26].matches("^[A-Za-z0-9 ]{5}$") || flowVars.data2[26].trim()==""){
+flowVars.NL_Flight_no=flowVars.data2[26];
+}else{flowVars.errorFlight="true";
+sessionVars.errorMessage.add("please check NL- Flight no ");
+}
+
+if(flowVars.data2[27].trim().matches("^[A-Z]{1}$")|| flowVars.data2[27].trim()==""){
+flowVars.NL_Operational_Suffix =flowVars.data2[27];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Next Leg - Operational suffix value wrong ");
+}
+
+if (flowVars.data2[28].length()==9 || flowVars.data2[28].trim()==""){
+flowVars.NL_Date_of_Origin=flowVars.data2[28];
+}else{flowVars.errordate="true";
+sessionVars.errorMessage.add("NL-Origin date value not correct .please verify formate match ddMMMyyyy only");
+}
+
+if (flowVars.data2[29].length()==5||flowVars.data2[29].trim()==""){
+flowVars.NL_Departure_airport=flowVars.data2[29];
+}else{flowVars.errordate="true";
+sessionVars.errorMessage.add("Next Leg - Departure Airport value wrong ");
+}
+
+if(flowVars.data2[30].matches("^[0-1 ]{2}$")|| flowVars.data2[30].trim()==""){
+flowVars.NL_Leg_no_of_flight_in_rotation = flowVars.data2[30];
+}else{flowVars.errorFlag="true";
+sessionVars.errorMessage.add("Next leg no of flight in rotation  value wrong ");
+}
+
+if(flowVars.data2[31].trim().matches("^(OD|DH|SB)$")||flowVars.data2[31].trim()==""||flowVars.data2[24].length()==2){
+flowVars.NL_Element_type_indicator=flowVars.data2[31];
+}else{flowVars.errorFlag="true";}
+
+}else{
+
+  flowVars.action="false";
+}
+
+]]></expression-component>
+
+        <expression-component doc:name="DateValidation"><![CDATA[import java.util.*; import java.text.*;
+
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyyHHmmss");
+sdff.setLenient(false);
+
+if(flowVars.action != "false"){
+Date date = sdff.parse(flowVars.timestamp_In_GMT);
+SimpleDateFormat sdff1 = new SimpleDateFormat("ddMMMyyyy");
+sdff1.setLenient(false);
+Date date1= sdff1.parse(flowVars.Date_of_Origin);
+Date date2= sdff1.parse(flowVars.PL_Date_of_Origin);
+Date date3= sdff1.parse(flowVars.NL_Date_of_Origin);
+}else{flowVars.action = "false";}
+
+]]></expression-component>
+
+        <choice doc:name="Choice" tracking:enable-default-events="true">
+
+            <when expression="sessionVars.errorMessage.size()&gt;=1">
+                <scatter-gather doc:name="Scatter-Gather">
+                    <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" host="localhost" port="2222" path="/CrewAssignment/ErrorFormate" user="tester" password="password" responseTimeout="10000" doc:name="ErrorFiles"/>
+                    <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\CrewAssignment\error" outputPattern="#[flowVars.name]" responseTimeout="10000" doc:name="OriginalFileInCaseOfError"/>
+                </scatter-gather>
+
+                <set-variable variableName="errorrise" value="#[payload[data][data]]" doc:name="error rise"/>
+            </when>
+            <otherwise >
+                <dw:transform-message doc:name="response">
+                    <dw:set-variable variableName="responseMsg"><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.message_Type ]]></dw:set-variable>
+
+                </dw:transform-message>
+
+                <set-variable variableName="farmateMsg" value="#[flowVars.message_Type +&quot;&quot;+flowVars.timestamp_In_GMT+&quot;&quot;+flowVars.IATA_Airline_Designator+&quot;&quot;+flowVars.Flight_no+&quot;&quot;+flowVars.Operational_Suffix +&quot;&quot;+ flowVars.Date_of_Origin +&quot;&quot;+ flowVars.Departure_airport +&quot;&quot;+ flowVars.Destination_airport +&quot;&quot;+ flowVars.Duplicate_no +&quot;&quot;+ flowVars.Name_of_Pilot_in_Command +&quot;&quot;+ flowVars.WX_Qualification_of_Pilot +&quot;&quot;+ flowVars.PIC_First_leg_Indicator +&quot;&quot;+ flowVars.Leg_no_of_flight_in_rotation +&quot;&quot;+ flowVars.No_of_cockpit_cabin_crew +&quot;&quot;+ flowVars.No_of_cabin_crew +&quot;&quot;+ flowVars.Element_type_indicator +&quot;&quot;+ flowVars.Staff_Identification_no +&quot;&quot;+ flowVars.Duty_Position +&quot;&quot;+ flowVars.Airline_Designator +&quot;&quot;+ flowVars.PL_Flight_no +&quot;&quot;+ flowVars.PL_Operational_Suffix +&quot;&quot;+ flowVars.PL_Date_of_Origin +&quot;&quot;+ flowVars.PL_Departure_airport +&quot;&quot;+ flowVars.PL_Leg_no_of_flight_in_rotation +&quot;&quot;+ flowVars.PL_Element_type_indicator +&quot;&quot;+ flowVars.NL_Airline_Designator +&quot;&quot;+ flowVars.NL_Flight_no +&quot;&quot;+ flowVars.NL_Operational_Suffix +&quot;&quot;+ flowVars.NL_Date_of_Origin +&quot;&quot;+ flowVars.NL_Element_type_indicator +&quot;&quot;+ flowVars.NL_Departure_airport]" doc:name="Formate_message"/>
+                <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\backup" outputPattern="#[flowVars.name]" responseTimeout="10000" doc:name="OriginalFileInSuccess"/>
+
+            </otherwise>
+        </choice>
+
+        <expression-filter expression="#[flowVars.filter!=&quot;false&quot;]" doc:name="CheckExceptionFilter"/>
+
+        <dw:transform-message doc:name="ResponceMessage">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.farmateMsg]]></dw:set-payload>
+        </dw:transform-message>
+        <scatter-gather doc:name="Scatter-Gather">
+            <wmq:outbound-endpoint queue="AA.RQ" connector-ref="WMQ" doc:name="MainQ"/>
+            <wmq:outbound-endpoint queue="AA.RQ" connector-ref="WMQ" doc:name="BackupQ"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" host="localhost" port="2222" path="/CrewAssignment/Lido" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+
+        <logger message="#[flowVars.farmateMsg]" level="INFO" doc:name="Logger"/>
+        <exception-strategy ref="Global_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="post_messageflow">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+        <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\logfiles" outputPattern="errorlog.txt" responseTimeout="10000" doc:name="File"/>
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\CrewAssignment\mail" outputPattern="sample.txt" responseTimeout="10000" doc:name="File"/>
+            </scatter-gather>
+        <set-attachment attachmentName="attach" value="#[sessionVars.errorMessage] in a given file" contentType="text/plain" doc:name="Attachment"/>
+
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="venkat212.eidiko@gmail.com" password="8374945152" connector-ref="Gmail" to="reddyvenkateswara212@gmail.com" from="venkat212.eidiko@gmail.com" subject="errordetails" responseTimeout="10000" doc:name="gmail"/>
+    </flow>
+
+</mule>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+      <choice-exception-strategy name="Global_Exception_Strategy">
+        <catch-exception-strategy when="#[exception.causedBy(org.mule.api.expression.ExpressionRuntimeException)||exception.causedBy(org.mule.api.MuleRuntimeException)]" doc:name="Catch_Exception_Strategy">
+            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            <set-variable variableName="fliter" value="#['false']" doc:name="Variable"/>
+            <set-variable variableName="postMessage" value="#[&quot;CrewAssigment data&quot;]" doc:name="Variable"/>
+            <choice doc:name="Choice">
+                <when expression="#[exception.message.contains('import java.util.*')]">
+                    <set-variable variableName="postMessage" value="#[&quot;Invalid date formated&quot;]" doc:name="dateFormate"/>
+                </when>
+                <when expression="flowVars.action==&quot;false&quot;">
+                    <set-variable variableName="postMessage" value="#[&quot;invalid data in file&quot;]" doc:name="validateFile"/>
+                </when>
+                <when expression="sessionVars.errorMessage.size()&gt;=1">
+                    <expression-component doc:name="Expression"><![CDATA[if(exception.message.contains('import java.util.*')){
+sessionVars.errorDetails.add("error in timestamp_In_GMT or Date of origin or Previousleg Date of origin or nextLeg  Date of origin value wrong");
+}
+for(int i=0;i<sessionVars.errorMessage.size();i++){
+flowVars.postMessage=flowVars.postMessage+sessionVars.errorMessage[i];
+}]]></expression-component>
+                </when>
+                <otherwise>
+                    <set-variable variableName="postMessage" value="#[&quot;other errors&quot;]" doc:name="defaultError"/>
+                </otherwise>
+            </choice>
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.postMessage]]></dw:set-payload>
+            </dw:transform-message>
+            
+            <flow-ref name="post_messageflow" doc:name="post_messageflow"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy doc:name="Default_ Exception_Strategy">
+            <logger message="#[exception.message]" level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+</mule>
