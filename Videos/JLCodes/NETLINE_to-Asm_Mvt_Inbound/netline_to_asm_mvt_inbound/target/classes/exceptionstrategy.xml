@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <file:connector name="File" outputPattern="logfile.txt" writeToDirectory="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" autoDelete="false" streaming="true" validateConnections="true" pollingFrequency="100000" doc:name="File"/>
+    <sftp:connector name="SFTP3" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP4" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <catch-exception-strategy name="exceptionstrategyCatch_Exception_Strategy">
+        <choice doc:name="Choice">
+            <when expression="#[exception.message.toString().contains('flowVars...data')]">
+                <choice doc:name="Choice">
+                    <when expression="#[flowVars.filename contains &quot;.msg&quot; ==false]">
+                        <logger message="It is not a valid file" level="INFO" doc:name="Logger"/>
+                        <set-variable variableName="err" value="#['It is not a valid file']" doc:name="Variable"/>
+                    </when>
+                    <when expression="#[flowVars.output contains &quot;ASM&quot;  or flowVars.output contains &quot;COR&quot; or flowVars.output contains &quot;MVT&quot; ==false]">
+                        <logger message="It is not a valid message format" level="INFO" doc:name="Logger"/>
+                        <set-variable variableName="err" value="#['It is not a valid message format']" doc:name="Variable"/>
+                    </when>
+                </choice>
+            </when>
+        </choice>
+        <set-payload value="#[flowVars.err]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP3" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/Logfilefolder" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP4" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/ERROR" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <set-payload value="#[flowVars.err]" doc:name="Set Payload"/>
+        <set-attachment attachmentName="log" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="Log Data" cc="naveenpullagura.eidiko@gmail.com" responseTimeout="10000" doc:name="SMTP"/>
+    </catch-exception-strategy>
+</mule>
