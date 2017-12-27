@@ -1,0 +1,1446 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000000" autoDelete="false" doc:name="SFTP"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="BB" channel="AATOBB" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="system" password="sarasu10" doc:name="Oracle Configuration"/>
+    <smtp:gmail-connector name="Gmail1" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <sftp:connector name="SFTP1" validateConnections="true" pollingFrequency="1000000" archiveDir="C:\Users\db2admin.bandaru-PC\Desktop\Jet-lido\FlightSummeryMessage\suceesfiles" autoDelete="false" doc:name="SFTP"/>
+     <flow name="flight_summary_messageFlow">
+        <wmq:inbound-endpoint queue="BB.LQ" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="inputfile" value="#[message.inboundProperties.originalFilename]" doc:name="Variable"/>
+        <set-variable variableName="indata" value="#[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+        <set-session-variable variableName="errorDetails" value="#[new java.util.ArrayList()]" doc:name="sessionvar"/>
+
+        <expression-component doc:name="FlightSummeryData Validation"><![CDATA[import java.util.*;import java.text.*;
+flowVars.dataArray=new java.util.ArrayList();
+flowVars.eptopsdata=new java.util.ArrayList();
+flowVars.petdata=new java.util.ArrayList();
+flowVars.suitablAirportdata= new java.util.ArrayList();
+flowVars.adequatedata=new java.util.ArrayList();
+
+
+if(flowVars.indata.substring(0,4)=="FSUM"){
+flowVars.infotype=flowVars.indata.substring(0,4);
+}else {
+sessionVars.errorDetails.add("info type value always FSUM");
+}
+if(flowVars.indata.substring(4,19).trim().length()==15){
+flowVars.DateofMessage=flowVars.indata.substring(4,19);
+}else {
+sessionVars.errorDetails.add("date of message value not in valid date");
+}
+if(flowVars.indata.substring(19,21).trim()==""){
+flowVars.seperator1=flowVars.indata.substring(19,21);
+}else{
+sessionVars.errorDetails.add("missing seperator at sting position 19");
+}
+if(flowVars.indata.substring(21,24).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.airLineDesignator=flowVars.indata.substring(21,24);
+}else{
+sessionVars.errorDetails.add("airline designator value wrong");
+}
+if(flowVars.indata.substring(24,29).matches("^[A-Za-z0-9 ]{5}$")){
+flowVars.flightNumber=flowVars.indata.substring(24,29);
+}else{
+sessionVars.errorDetails.add("flight number value wrong");
+}
+if(flowVars.indata.substring(29,30).matches("^[A-Za-z ]{1}$")){
+flowVars.operationalSuffix=flowVars.indata.substring(29,30);
+}else{
+sessionVars.errorDetails.add("operational suffix  value wrong");
+}
+if(flowVars.indata.substring(30,39).matches("^[A-Za-z 0-9]{9}$")){
+flowVars.dateofOrigin=flowVars.indata.substring(30,39);
+}else{
+sessionVars.errorDetails.add("date of origin   value wrong");
+}
+if(flowVars.indata.substring(39,44).matches("^[A-Za-z ]{5}$")){
+flowVars.departureAirportIATA=flowVars.indata.substring(39,44);
+}else{
+sessionVars.errorDetails.add("departure airportIATA   value wrong")
+}
+if(flowVars.indata.substring(44,49).matches("^[A-Za-z ]{5}$")){
+flowVars.destinationAirportIATA=flowVars.indata.substring(44,49);
+}else{
+sessionVars.errorDetails.add("destination airportIATA   value wrong");
+}
+if(flowVars.indata.substring(49,53).matches("^[A-Za-z ]{4}$")){
+flowVars.departureAirportICAO=flowVars.indata.substring(49,53);
+}else{
+sessionVars.errorDetails.add("departure airport ICAO  value wrong");
+}
+if(flowVars.indata.substring(53,57).matches("^[A-Za-z ]{4}$")){
+flowVars.destinationAirportICAO=flowVars.indata.substring(53,57);
+}else{
+sessionVars.errorDetails.add("departure airport ICAO  value wrong");
+}
+if(flowVars.indata.substring(57,60).matches("^[A-Za-z 0-9]{3}$")){
+flowVars.departureRunway=flowVars.indata.substring(57,60);
+}else{
+sessionVars.errorDetails.add("departure runway  value wrong");
+}
+if(flowVars.indata.substring(60,63).matches("^[A-Za-z 0-9]{3}$")){
+flowVars.arrivalRunway=flowVars.indata.substring(60,63);
+}else{
+sessionVars.errorDetails.add("arrival runway  value wrong");
+}
+if(flowVars.indata.substring(63,72).matches("^[A-Za-z 0-9]{9}$")){
+flowVars.registrationNo=flowVars.indata.substring(63,72);
+}else{
+sessionVars.errorDetails.add("registration number  value wrong");
+}
+if(flowVars.indata.substring(72,76).matches("^[A-Za-z ]{4}$")){
+flowVars.aircraftRadioCallsign=flowVars.indata.substring(72,76);
+}else{
+sessionVars.errorDetails.add("aircraftRadioCallsign  value wrong");
+}
+if(flowVars.indata.substring(76,79).matches("^[A-Za-z 0-9]{3}$")){
+flowVars.IATAaircraft=flowVars.indata.substring(76,79);
+}else{
+sessionVars.errorDetails.add("IATA Aircraft type  value wrong");
+}
+if(flowVars.indata.substring(79,81).trim()==""){
+flowVars.seperator2=flowVars.indata.substring(79,81);
+}else{
+sessionVars.errorDetails.add("seperator  value wrong at stirng index 76");
+}
+if(flowVars.indata.substring(81,83).trim().matches("^[0-9]{2}$")){
+flowVars.flightduplicateNo=flowVars.indata.substring(81,83);
+}else{
+sessionVars.errorDetails.add("flightduplicateNo value wrong");
+}
+if(flowVars.indata.substring(83,85).trim()==""){
+flowVars.seperator3=flowVars.indata.substring(83,85);
+}else{
+sessionVars.errorDetails.add("seperator  value wrong at stirng index 83");
+}
+if(flowVars.indata.substring(85,98).matches("^[A-Za-z 0-9]{13}$")){
+flowVars.STDETDoff=flowVars.indata.substring(85,98);
+}else{
+sessionVars.errorDetails.add("STD/ETDoff value wrong");
+}
+if(flowVars.indata.substring(98,111).matches("^[A-Za-z 0-9]{13}$")){
+flowVars.ETAUTC=flowVars.indata.substring(98,111);
+}else{
+sessionVars.errorDetails.add("ETA-UTC value wrong");
+}
+if(flowVars.indata.substring(111,113).trim()==""){
+flowVars.seperator4=flowVars.indata.substring(111,113);
+}else{
+sessionVars.errorDetails.add("seperator  value wrong at stirng index 111");
+}
+if(flowVars.indata.substring(113,118).matches("^[A-Za-z ]{5}$")){
+flowVars.takeoffAltIATA=flowVars.indata.substring(113,118);
+}else{
+sessionVars.errorDetails.add("takeoffAltIATA  value wrong ");
+}
+if(flowVars.indata.substring(118,122).matches("^[A-Za-z ]{4}$")){
+flowVars.takeoffAltICAO=flowVars.indata.substring(118,122);
+}else{
+sessionVars.errorDetails.add("takeoffAltICAO  value wrong ");
+}
+if(flowVars.indata.substring(122,123).matches("^[0-9 ]{1}$")){
+flowVars.noofAlt=flowVars.indata.substring(122,123);
+}else{
+sessionVars.errorDetails.add("No of Alternates  value wrong ");
+}
+if(flowVars.indata.substring(123,128).matches("^[A-Za-z ]{5}$")){
+flowVars.1AltIATA=flowVars.indata.substring(123,128);
+}else{
+sessionVars.errorDetails.add("1Alternate IATA value wrong ");
+}
+if(flowVars.indata.substring(128,132).matches("^[A-Za-z ]{4}$")){
+flowVars.1AltICAO=flowVars.indata.substring(128,132);
+}else{
+sessionVars.errorDetails.add("1Alternate ICAO value wrong ");
+}
+if(flowVars.indata.substring(132,137).matches("^[A-Za-z ]{5}$")){
+flowVars.2AltIATA=flowVars.indata.substring(132,137);
+}else{
+sessionVars.errorDetails.add("2Alternate IATA value wrong ");
+}
+if(flowVars.indata.substring(137,141).matches("^[A-Za-z ]{4}$")){
+flowVars.2AltICAO=flowVars.indata.substring(137,141);
+}else{
+sessionVars.errorDetails.add("2Alternate ICAO value wrong ");
+}
+if(flowVars.indata.substring(141,146).matches("^[A-Za-z ]{5}$")){
+flowVars.3AltIATA=flowVars.indata.substring(141,146);
+}else{
+sessionVars.errorDetails.add("3Alternate IATA value wrong ");
+}
+if(flowVars.indata.substring(146,150).matches("^[A-Za-z ]{4}$")){
+flowVars.3AltICAO=flowVars.indata.substring(146,150);
+}else{
+sessionVars.errorDetails.add("3Alternate ICAO value wrong ");
+}
+if(flowVars.indata.substring(150,155).matches("^[A-Za-z ]{5}$")){
+flowVars.4AltIATA=flowVars.indata.substring(150,155);
+}else{
+sessionVars.errorDetails.add("4Alternate IATA value wrong ");
+}
+if(flowVars.indata.substring(155,159).matches("^[A-Za-z ]{4}$")){
+flowVars.4AltICAO=flowVars.indata.substring(155,159);
+}else{
+sessionVars.errorDetails.add("4Alternate ICAO value wrong ");
+}
+if(flowVars.indata.substring(159,163).matches("^[A-Za-z ]{4}$")){
+flowVars.aircraftICAOCode=flowVars.indata.substring(159,163);
+}else{
+sessionVars.errorDetails.add("aircraftICAOCode value wrong ");
+}
+if(flowVars.indata.substring(163,164).matches("^[F|I]{1}$")){
+flowVars.releaseIndicator=flowVars.indata.substring(163,164);
+}else{
+sessionVars.errorDetails.add("releaseIndicator value wrong ");
+}
+if(flowVars.indata.substring(164,167).matches("^[0-9 ]{3}$")){
+flowVars.scenarioNo=flowVars.indata.substring(164,167);
+}else{
+sessionVars.errorDetails.add("scenarioNo value wrong ");
+}
+if(flowVars.indata.substring(167,170).matches("^[0-9 ]{3}$")){
+flowVars.OFPno=flowVars.indata.substring(167,170);
+}else{
+sessionVars.errorDetails.add("OFPno value wrong ");
+}
+if(flowVars.indata.substring(170,172).matches("^[0-9 ]{2}$")){
+flowVars.RCLno=flowVars.indata.substring(170,172);
+}else{
+sessionVars.errorDetails.add("RCLno value wrong ");
+}
+if(flowVars.indata.substring(172,173).matches("^[0-9 ]{1}$")){
+flowVars.ETOPSindicator=flowVars.indata.substring(172,173);
+}else{
+sessionVars.errorDetails.add("ETOPSindicator value wrong ");
+}
+if(flowVars.indata.substring(173,174).trim()==""){
+flowVars.seperator5=flowVars.indata.substring(173,174);
+}else{
+sessionVars.errorDetails.add("seperator value wrong at string index 173 ");
+}
+if(flowVars.indata.substring(174,183).matches("^[A-Za-z 0-9]{9}$")){
+flowVars.ATCcallsign=flowVars.indata.substring(174,183);
+}else{
+sessionVars.errorDetails.add("ATCcallsign value wrong ");
+}
+if(flowVars.indata.substring(183,184).matches("^[K|L]{1}$")){
+flowVars.unitofMessure=flowVars.indata.substring(183,184);
+}else{
+sessionVars.errorDetails.add("unitofMessure value wrong ");
+}
+if(flowVars.indata.substring(184,189).matches("^[0-9 ]{5}$")){
+flowVars.tripdistanceAir=flowVars.indata.substring(184,189);
+}else{
+sessionVars.errorDetails.add("Trip distance in NM(air) value wrong ");
+}
+if(flowVars.indata.substring(189,194).matches("^[0-9 ]{5}$")){
+flowVars.tripdistanceGround=flowVars.indata.substring(189,194);
+}else{
+sessionVars.errorDetails.add("Trip distance in NM(ground) value wrong ");
+}
+if(flowVars.indata.substring(194,199).matches("^[0-9 ]{5}$")){
+flowVars.greateCircle=flowVars.indata.substring(194,199);
+}else{
+sessionVars.errorDetails.add("Great Circle Distance in NMvalue wrong ");
+}
+if(flowVars.indata.substring(199,203).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.avgWindComponent=flowVars.indata.substring(199,203);
+}else{
+sessionVars.errorDetails.add("Average windcomponent in kts value wrong ");
+}
+if(flowVars.indata.substring(203,207).matches("^[0-9 ]{4}$")){
+flowVars.taxifuleOut=flowVars.indata.substring(203,207);
+}else{
+sessionVars.errorDetails.add("Taxi fuel (out) value wrong ");
+}
+if(flowVars.indata.substring(207,211).matches("^[0-9 ]{4}$")){
+flowVars.taxifuelIn=flowVars.indata.substring(207,211);
+}else{
+sessionVars.errorDetails.add("Taxi fuel (in) value wrong ");
+}
+if(flowVars.indata.substring(211,217).matches("^[0-9 ]{6}$")){
+flowVars.tripfule=flowVars.indata.substring(211,217);
+}else{
+sessionVars.errorDetails.add("Trip fuel value wrong ");
+}
+if(flowVars.indata.substring(217,223).matches("^[0-9 ]{6}$")){
+flowVars.blockfule=flowVars.indata.substring(217,223);
+}else{
+sessionVars.errorDetails.add("Block fuel value wrong ");
+}
+if(flowVars.indata.substring(223,229).matches("^[0-9 ]{6}$")){
+flowVars.plannedHoldingfule=flowVars.indata.substring(223,229);
+}else{
+sessionVars.errorDetails.add("Planned holding fuel value wrong ");
+}
+if(flowVars.indata.substring(229,235).matches("^[0-9 ]{6}$")){
+flowVars.ADDFU1=flowVars.indata.substring(229,235);
+}else{
+sessionVars.errorDetails.add("Additional Fuel 1 value wrong ");
+}
+if(flowVars.indata.substring(235,238).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.reasonADDFU1=flowVars.indata.substring(235,238);
+}else{
+sessionVars.errorDetails.add("Reason for Additional Fuel 1 value wrong ");
+}
+if(flowVars.indata.substring(238,244).matches("^[0-9 ]{6}$")){
+flowVars.ADDFU2=flowVars.indata.substring(238,244);
+}else{
+sessionVars.errorDetails.add("Additional Fuel 2 value wrong ");
+}
+if(flowVars.indata.substring(244,247).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.reasonADDFU2=flowVars.indata.substring(244,247);
+}else{
+sessionVars.errorDetails.add("Reason for Additional Fuel 2 value wrong ");
+}
+if(flowVars.indata.substring(247,253).matches("^[0-9 ]{6}$")){
+flowVars.ADDFU3=flowVars.indata.substring(247,253);
+}else{
+sessionVars.errorDetails.add("Additional Fuel 3 value wrong ");
+}
+if(flowVars.indata.substring(253,256).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.reasonADDFU3=flowVars.indata.substring(253,256);
+}else{
+sessionVars.errorDetails.add("Reason for Additional Fuel 3 value wrong ");
+}
+if(flowVars.indata.substring(256,262).matches("^[0-9 ]{6}$")){
+flowVars.ADDFU4=flowVars.indata.substring(256,262);
+}else{
+sessionVars.errorDetails.add("Additional Fuel 4 value wrong ");
+}
+if(flowVars.indata.substring(262,265).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.reasonADDFU4=flowVars.indata.substring(262,265);
+}else{
+sessionVars.errorDetails.add("Reason for Additional Fuel 4 value wrong ");
+}
+if(flowVars.indata.substring(265,271).matches("^[0-9 ]{6}$")){
+flowVars.contgFule=flowVars.indata.substring(265,271);
+}else{
+sessionVars.errorDetails.add("Contingency Fuel value wrong ");
+}
+if(flowVars.indata.substring(271,277).matches("^[0-9 ]{6}$")){
+flowVars.tankcapacity=flowVars.indata.substring(271,277);
+}else{
+sessionVars.errorDetails.add("tankcapacity value wrong ");
+}
+if(flowVars.indata.substring(277,283).matches("^[0-9 ]{6}$")){
+flowVars.maxLandingWeight=flowVars.indata.substring(277,283);
+}else{
+sessionVars.errorDetails.add("Max Landing-weight value wrong ");
+}
+if(flowVars.indata.substring(283,289).matches("^[0-9 ]{6}$")){
+flowVars.plannedTOWeight=flowVars.indata.substring(283,289);
+}else{
+sessionVars.errorDetails.add("Planned T/O-Weight value wrong ");
+}
+if(flowVars.indata.substring(289,295).matches("^[0-9 ]{6}$")){
+flowVars.maxTOWeight=flowVars.indata.substring(289,295);
+}else{
+sessionVars.errorDetails.add("Max T/O-Weight value wrong ");
+}
+if(flowVars.indata.substring(295,301).matches("^[0-9 ]{6}$")){
+flowVars.maxTaxiWeight=flowVars.indata.substring(295,301);
+}else{
+sessionVars.errorDetails.add("Max Taxi-weight value wrong ");
+}
+if(flowVars.indata.substring(301,307).matches("^[0-9 ]{6}$")){
+flowVars.PlnZFW=flowVars.indata.substring(301,307);
+}else{
+sessionVars.errorDetails.add("Pln ZFW value wrong ");
+}
+if(flowVars.indata.substring(307,313).matches("^[0-9 ]{6}$")){
+flowVars.maxZFW=flowVars.indata.substring(307,313);
+}else{
+sessionVars.errorDetails.add("Max ZFW value wrong ");
+}
+if(flowVars.indata.substring(313,319).matches("^[0-9 ]{6}$")){
+flowVars.fuleOverDest=flowVars.indata.substring(313,319);
+}else{
+sessionVars.errorDetails.add("Fuel over destination value wrong ");
+}
+if(flowVars.indata.substring(319,325).matches("^[0-9 ]{6}$")){
+flowVars.economicfule=flowVars.indata.substring(319,325);
+}else{
+sessionVars.errorDetails.add("Economic Fuel value wrong ");
+}
+if(flowVars.indata.substring(325,331).matches("^[0-9 ]{6}$")){
+flowVars.savinginUSD=flowVars.indata.substring(325,331);
+}else{
+sessionVars.errorDetails.add("Saving in USD value wrong ");
+}
+if(flowVars.indata.substring(331,341).matches("^[A-Za-z0-9 ]{10}$")){
+flowVars.routeOtimizationCriteria=flowVars.indata.substring(331,341);
+}else{
+sessionVars.errorDetails.add("Route OptimizationCriteria value wrong ");
+}
+if(flowVars.indata.substring(341,345).matches("^[0-9 ]{4}$")){
+flowVars.taxiOutTime=flowVars.indata.substring(341,345);
+}else{
+sessionVars.errorDetails.add("Taxi out time in min value wrong ");
+}
+if(flowVars.indata.substring(345,349).matches("^[0-9 ]{4}$")){
+flowVars.taxiInTime=flowVars.indata.substring(345,349);
+}else{
+sessionVars.errorDetails.add("Taxi in time in min value wrong ");
+}
+if(flowVars.indata.substring(349,353).matches("^[0-9 ]{4}$")){
+flowVars.tripInmin=flowVars.indata.substring(349,353);
+}else{
+sessionVars.errorDetails.add("Trip time in minutes value wrong ");
+}
+if(flowVars.indata.substring(353,357).matches("^[0-9 ]{4}$")){
+flowVars.blockTime=flowVars.indata.substring(353,357);
+}else{
+sessionVars.errorDetails.add("Planned Block Time value wrong ");
+}
+if(flowVars.indata.substring(357,361).matches("^[0-9 ]{4}$")){
+flowVars.estTotalflightTime=flowVars.indata.substring(357,361);
+}else{
+sessionVars.errorDetails.add("Estim. Total FlightTime (Time ofPLNTOF in minutes)Time value wrong ");
+}
+if(flowVars.indata.substring(361,365).matches("^[0-9 ]{4}$")){
+flowVars.plannedHolding=flowVars.indata.substring(361,365);
+}else{
+sessionVars.errorDetails.add("Planned HoldingTime value wrong ");
+}
+if(flowVars.indata.substring(365,369).matches("^[0-9 ]{4}$")){
+flowVars.Extratime1=flowVars.indata.substring(365,369);
+}else{
+sessionVars.errorDetails.add("Extra Time 1(Time of ADDFU1 in minutes) value wrong ");
+}
+if(flowVars.indata.substring(369,373).matches("^[0-9 ]{4}$")){
+flowVars.Extratime2=flowVars.indata.substring(369,373);
+}else{
+sessionVars.errorDetails.add("Extra Time 2(Time of ADDFU2 in minutes) value wrong ");
+}
+if(flowVars.indata.substring(373,377).matches("^[0-9 ]{4}$")){
+flowVars.Extratime3=flowVars.indata.substring(373,377);
+}else{
+sessionVars.errorDetails.add("Extra Time 3(Time of ADDFU3 in minutes) value wrong ");
+}
+if(flowVars.indata.substring(377,381).matches("^[0-9 ]{4}$")){
+flowVars.Extratime4=flowVars.indata.substring(377,381);
+}else{
+sessionVars.errorDetails.add("Extra Time4(Time of ADDFU4 in minutes) value wrong ");
+}
+if(flowVars.indata.substring(381,385).matches("^[0-9 ]{4}$")){
+flowVars.contgTime=flowVars.indata.substring(381,385);
+}else{
+sessionVars.errorDetails.add("Contingency Time value wrong ");
+}
+if(flowVars.indata.substring(385,386).trim()==""){
+flowVars.seperator6=flowVars.indata.substring(385,386);
+}else{
+sessionVars.errorDetails.add("sepertor value wrong at string index 381");
+}
+if(flowVars.indata.substring(386,389).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.aircraftOperator=flowVars.indata.substring(386,389);
+}else{
+sessionVars.errorDetails.add("Aircraft Operator  value wrong");
+}
+if(flowVars.indata.substring(389,397).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.aircraftSpeedPreducer=flowVars.indata.substring(389,397);
+}else{
+sessionVars.errorDetails.add("Aircraft Speed value wrong");
+}
+if(flowVars.indata.substring(397,401).matches("^[0-9 ]{4}$")){
+flowVars.costIndexECO=flowVars.indata.substring(397,401);
+}else{
+sessionVars.errorDetails.add("Cost index ECO value wrong");
+}
+if(flowVars.indata.substring(401,405).matches("^[0-9 ]{4}$")){
+flowVars.performanceCollection=flowVars.indata.substring(401,405);
+}else{
+sessionVars.errorDetails.add("formance Correction (*1000)value wrong");
+}
+if(flowVars.indata.substring(405,408).matches("^[0-9 ]{3}$")){
+flowVars.contgCoverage=flowVars.indata.substring(405,408);
+}else{
+sessionVars.errorDetails.add("ContingencyCoverage value wrong");
+}
+if(flowVars.indata.substring(408,414).matches("^[0-9 ]{6}$")){
+flowVars.contgPercet=flowVars.indata.substring(408,414);
+}else{
+sessionVars.errorDetails.add("Contingency percentage value wrong");
+}
+if(flowVars.indata.substring(414,418).matches("^[0-9 ]{4}$")){
+flowVars.enrouteFuel=flowVars.indata.substring(414,418);
+}else{
+sessionVars.errorDetails.add("Enroute Fuel alternate ICAO value wrong");
+}
+if(flowVars.indata.substring(418,424).matches("^[0-9 ]{6}$")){
+flowVars.noenrouteFule=flowVars.indata.substring(418,424);
+}else{
+sessionVars.errorDetails.add("No Enroute Alternate percentage value wrong");
+}
+if(flowVars.indata.substring(424,429).matches("^[0-9 ]{5}$")){
+flowVars.tripfuelCorrect1=flowVars.indata.substring(424,429);
+}else{
+sessionVars.errorDetails.add("Trip Fuel Correction: ZFW-1000KG  value wrong");
+}
+if(flowVars.indata.substring(429,434).matches("^[0-9 ]{5}$")){
+flowVars.tripfuleCorrect2=flowVars.indata.substring(429,434);
+}else{
+sessionVars.errorDetails.add("Trip Fuel Correction: ZFW+1000KG  value wrong");
+}
+if(flowVars.indata.substring(434,439).matches("^[0-9 ]{5}$")){
+flowVars.tripfulebelowFL=flowVars.indata.substring(434,439);
+}else{
+sessionVars.errorDetails.add("Trip Fuel one FL below value wrong");
+}
+if(flowVars.indata.substring(439,445).matches("^[A-Za-z0-9 ]{6}$")){
+flowVars.gainToloss=flowVars.indata.substring(439,445);
+}else{
+sessionVars.errorDetails.add("Trip Fuel one FL below value wrong");
+}
+if(flowVars.indata.substring(445,455).matches("^[A-Za-z ]{10}$")){
+flowVars.predefinedRouteName=flowVars.indata.substring(445,455);
+}else{
+sessionVars.errorDetails.add("Predefined RouteName value wrong");
+}
+if(flowVars.indata.substring(455,475).matches("^[A-Za-z0-9- .]{20}$")){
+flowVars.picName=flowVars.indata.substring(455,475);
+}else{
+sessionVars.errorDetails.add("PIC Name value wrong");
+}
+if(flowVars.indata.substring(475,505).matches("^[A-Za-z 0-9.]{30}$")){
+flowVars.dispatureName=flowVars.indata.substring(475,505);
+}else{
+sessionVars.errorDetails.add("Dispatcher Name value wrong");
+}
+if(flowVars.indata.substring(505,585).matches("^[A-Za-z 0-9]{80}$")){
+flowVars.dispatureRemark=flowVars.indata.substring(505,585);
+}else{
+sessionVars.errorDetails.add("Dispatcher Remark value wrong");
+}
+if(flowVars.indata.substring(585,589).matches("^[A-Za-z 0-9]{4}$")){
+flowVars.altitudeatTopofClimb=flowVars.indata.substring(585,589);
+}else{
+sessionVars.errorDetails.add("Altitude at top of climb (100th feet or 10th )meter value wrong");
+}
+if(flowVars.indata.substring(589,593).matches("^[A-Za-z 0-9]{4}$")){
+flowVars.altitudeatTopofDescend=flowVars.indata.substring(589,593);
+}else{
+sessionVars.errorDetails.add("Altitude at top of descend (100th feet or 10th )meter value wrong");
+}
+if(flowVars.indata.substring(593,603).trim()==""){
+flowVars.seperator7=flowVars.indata.substring(593,603);
+}else{
+sessionVars.errorDetails.add("seperator value wrong at string index 593");
+}
+if(flowVars.indata.substring(603,607).matches("^[ 0-9]{4}$")){
+flowVars.1AltFlightDist=flowVars.indata.substring(603,607);
+}else{
+sessionVars.errorDetails.add(" 1st Alternate flight distance in NM value wrong ");
+}
+if(flowVars.indata.substring(607,611).matches("^[ 0-9]{4}$")){
+flowVars.1AltFlightTime=flowVars.indata.substring(607,611);
+}else{
+sessionVars.errorDetails.add(" 1st Alternate flight time in minutes value wrong ");
+}
+if(flowVars.indata.substring(611,616).matches("^[ 0-9]{5}$")){
+flowVars.1AltFule=flowVars.indata.substring(611,616);
+}else{
+sessionVars.errorDetails.add(" 1st Alternate fuel value wrong ");
+}
+if(flowVars.indata.substring(616,620).matches("^[ 0-9]{4}$")){
+flowVars.2AltFlightDist=flowVars.indata.substring(616,620);
+}else{
+sessionVars.errorDetails.add("2nd Alternate flight distance in NM value wrong ");
+}
+if(flowVars.indata.substring(620,624).matches("^[ 0-9]{4}$")){
+flowVars.2AltFlightTime=flowVars.indata.substring(620,624);
+}else{
+sessionVars.errorDetails.add("2nd Alternate flight time in Minutes value wrong ");
+}
+if(flowVars.indata.substring(624,629).matches("^[ 0-9]{5}$")){
+flowVars.2AltFule=flowVars.indata.substring(624,629);
+}else{
+sessionVars.errorDetails.add(" 2nd Alternate fuel value wrong ");
+}
+if(flowVars.indata.substring(629,633).matches("^[ 0-9]{4}$")){
+flowVars.3AltFlightDist=flowVars.indata.substring(629,633);
+}else{
+sessionVars.errorDetails.add("3rd Alternate flight distance in NM value wrong ");
+}
+if(flowVars.indata.substring(633,637).matches("^[ 0-9]{4}$")){
+flowVars.3AltFlightTime=flowVars.indata.substring(633,637);
+}else{
+sessionVars.errorDetails.add("3rd Alternate flight time in Minutes value wrong ");
+}
+if(flowVars.indata.substring(637,642).matches("^[ 0-9]{5}$")){
+flowVars.3AltFule=flowVars.indata.substring(637,642);
+}else{
+sessionVars.errorDetails.add(" 3rd Alternate fuel value wrong ");
+}
+if(flowVars.indata.substring(642,646).matches("^[ 0-9]{4}$")){
+flowVars.4AltFlightDist=flowVars.indata.substring(642,646);
+}else{
+sessionVars.errorDetails.add("4th Alternate flight distance in NM value wrong ");
+}
+if(flowVars.indata.substring(646,650).matches("^[ 0-9]{4}$")){
+flowVars.4AltFlightTime=flowVars.indata.substring(646,650);
+}else{
+sessionVars.errorDetails.add("4th Alternate flight time in Minutes value wrong ");
+}
+if(flowVars.indata.substring(650,655).matches("^[ 0-9]{5}$")){
+flowVars.4AltFule=flowVars.indata.substring(650,655);
+}else{
+sessionVars.errorDetails.add("4th Alternate fuel value wrong ");
+}
+if(flowVars.indata.substring(655,665).trim()==""){
+flowVars.seperator8=flowVars.indata.substring(655,665);
+}else{
+sessionVars.errorDetails.add("Seperator value wrong at string index 650");
+}
+if(flowVars.indata.substring(665,672).matches("^[A-Za-z 0-9]{7}$")){
+flowVars.SID=flowVars.indata.substring(665,672);
+}else{
+sessionVars.errorDetails.add("SID value wrong ");
+}
+if(flowVars.indata.substring(672,677).matches("^[A-Za-z 0-9]{5}$")){
+flowVars.SIDExit=flowVars.indata.substring(672,677);
+}else{
+sessionVars.errorDetails.add("SID Exit value wrong ");
+}
+if(flowVars.indata.substring(677,680).matches("^[ 0-9]{3}$")){
+flowVars.SIDdist=flowVars.indata.substring(677,680);
+}else{
+sessionVars.errorDetails.add("SID Distance value wrong ");
+}
+if(flowVars.indata.substring(680,687).matches("^[A-Za-z 0-9]{7}$")){
+flowVars.STAR=flowVars.indata.substring(680,687);
+}else{
+sessionVars.errorDetails.add("STAR value wrong ");
+}
+if(flowVars.indata.substring(687,692).matches("^[A-Za-z 0-9]{5}$")){
+flowVars.STAREntry=flowVars.indata.substring(687,692);
+}else{
+sessionVars.errorDetails.add("STar Entry value wrong ");
+}
+if(flowVars.indata.substring(692,695).matches("^[0-9 ]{3}$")){
+flowVars.STARdist=flowVars.indata.substring(692,695);
+}else{
+sessionVars.errorDetails.add("STAR Distance value wrong ");
+}
+if(flowVars.indata.substring(695,698).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDeptToDest=flowVars.indata.substring(695,698);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing **DEP -> DEST value wrong ");
+}
+if(flowVars.indata.substring(698,701).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDeptAlt=flowVars.indata.substring(698,701);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing departure alternate ****DEP -> DEP value wrong ");
+}
+
+if(flowVars.indata.substring(701,704).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDestAlt1=flowVars.indata.substring(701,704);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing destination alternate ****DEST -> 1st ALTN value wrong ");
+}
+if(flowVars.indata.substring(704,707).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDestAlt2=flowVars.indata.substring(704,707);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing destination alternate ****DEST -> 2st ALTN value wrong ");
+}
+if(flowVars.indata.substring(707,710).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDestAlt3=flowVars.indata.substring(707,710);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing destination alternate ****DEST -> 3rd ALTN value wrong ");
+}
+if(flowVars.indata.substring(710,713).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointDestAlt4=flowVars.indata.substring(710,713);
+}else{
+sessionVars.errorDetails.add("No of waypoint of main routing destination alternate ****DEST -> 4th ALTN value wrong ");
+}
+if(flowVars.indata.substring(713,716).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointRouteclear=flowVars.indata.substring(713,716);
+}else{
+sessionVars.errorDetails.add("No of waypoint of routing to reclearance airport **Recl Airport -> ReclALTN value wrong  ");
+}
+if(flowVars.indata.substring(716,719).matches("^[ 0-9]{3}$")){
+flowVars.noofWaypointRouteclearAlt=flowVars.indata.substring(716,719);
+}else{
+sessionVars.errorDetails.add("No of waypoint of routing to reclearance alternate**Recl Airport -> ReclALTN value wrong ");
+}
+if(flowVars.indata.substring(716,719).matches("^[ 0-9]{3}$")){
+flowVars.totalnoofWaypointinMessage=flowVars.indata.substring(719,722);
+}else{
+sessionVars.errorDetails.add("Total number of waypoint in message value wrong ");
+}
+if(flowVars.indata.substring(722,732).trim()==""){
+flowVars.seperator9=flowVars.indata.substring(722,732);
+}else{
+sessionVars.errorDetails.add("seperator value wrong at string index 722");
+}
+
+
+
+flowVars.data=flowVars.indata.substring(732);
+
+flowVars.a=(flowVars.data.length()/82).toString().trim();
+if(flowVars.a.contains(".")){
+flowVars.b=flowVars.a.indexOf(".",0);
+flowVars.c=flowVars.a.substring(0,flowVars.b);
+flowVars.d=Integer.parseInt(flowVars.c);
+flowVars.d=flowVars.d+1;
+}else {
+flowVars.d=Integer.parseInt(flowVars.a);
+}
+flowVars.k=0;
+for(int i=0;i<flowVars.d;i++){
+flowVars.data1=flowVars.data.substring(flowVars.k);
+
+if(flowVars.data1.length()>=82){
+flowVars.sample=flowVars.data1.substring(0,15);
+flowVars.sample1=flowVars.sample.substring(0,11).trim();
+flowVars.sample2=flowVars.sample.substring(11).trim();
+flowVars.sample3=flowVars.sample.substring(5,12);
+if((flowVars.sample1.matches("^[A-Za-z_0-9]{2,5}$"))&&(flowVars.sample2.matches("^[A-Za-z0-9 ]{2,3}$"))&&(flowVars.sample3.trim()=="")){
+flowVars.data2=flowVars.data.substring(flowVars.k,flowVars.k+82);
+flowVars.dataArray.add(flowVars.data2);
+}
+
+else{
+flowVars.d=0;
+flowVars.loopdata=flowVars.data.substring(flowVars.k);
+}	
+}else{
+flowVars.d=0;
+flowVars.loopdata=flowVars.data.substring(flowVars.k);
+}
+flowVars.k=flowVars.k+82;
+}
+
+if(flowVars.loopdata.substring(0,1).matches("^[A-Z ]{1}$")){
+flowVars.eTOPS=flowVars.loopdata.substring(0,1);
+}else{
+sessionVars.errorDetails.add("ETOPS value wrong");
+}
+if(flowVars.loopdata.substring(1,4).matches("^[0-9 ]{3}$")){
+flowVars.eTOPSBorderTime=flowVars.loopdata.substring(1,4);
+}else{
+sessionVars.errorDetails.add("ETOPSBORDERTIME value wrong");
+}
+if(flowVars.loopdata.substring(4,7).matches("^[0-9 ]{3}$")){
+flowVars.eTOPSRuleTime=flowVars.loopdata.substring(4,7);
+}else{
+sessionVars.errorDetails.add("ETOPSRULERTIME value wrong");
+}
+if(flowVars.loopdata.substring(7,10).matches("^[0-9 ]{3}$")){
+flowVars.oneengineoutTrueAirSpeed=flowVars.loopdata.substring(7,10);
+}else{
+sessionVars.errorDetails.add("OneengineoutTrueAirSpeed value wrong");
+}
+if(flowVars.loopdata.substring(10,18).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.mostCriticalPointlongitude=flowVars.loopdata.substring(10,18);
+}else{
+sessionVars.errorDetails.add("MostCriticalPointlongitude value wrong");
+}
+if(flowVars.loopdata.substring(18,25).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.mostCriticalPointlatitude=flowVars.loopdata.substring(18,25);
+}else{
+sessionVars.errorDetails.add("MostCriticalPointlatitude value wrong");
+}
+if(flowVars.loopdata.substring(25,31).matches("^[0-9 ]{6}$")){
+flowVars.ETOPSAdditionalFuel=flowVars.loopdata.substring(25,31);
+}else{
+sessionVars.errorDetails.add("ETOPSAdditionalFuel value wrong");
+}
+
+
+
+
+flowVars.data4=flowVars.loopdata.substring(31);
+if(flowVars.data4.length()<=8){
+flowVars.formatFile="true";
+if(flowVars.loopdata.substring(31,33).matches("^[0-9 ]{2}$")){
+flowVars.NumberofETOPSAreas=flowVars.loopdata.substring(31,33);
+}else{
+sessionVars.errorDetails.add("NumberofETOPSAreas value wrong");
+}
+
+if(flowVars.loopdata.substring(33,35).matches("^[0-9 ]{2}$")){
+flowVars.NumberofPETs=flowVars.loopdata.substring(33,35);
+}else{
+sessionVars.errorDetails.add("NumberofPETs value wrong");
+}
+if(flowVars.loopdata.substring(35,37).matches("^[0-9 ]{2}$")){
+flowVars.NumberofSuitableAirports=flowVars.loopdata.substring(35,37);
+}else{
+sessionVars.errorDetails.add("NumberofSuitableAirports value wrong");
+}
+if(flowVars.loopdata.substring(37,39).matches("^[0-9 ]{2}$")){
+flowVars.NumberofAdequateAirports=flowVars.loopdata.substring(37,39);
+}else{
+sessionVars.errorDetails.add("NumberofSuitableAirports value wrong");
+}
+}else{
+flowVars.formatFile="false";
+flowVars.NoofETOPSAreas=flowVars.data4.substring(0,2).trim();
+flowVars.NumberofETOPSAreas=Integer.parseInt(flowVars.NoofETOPSAreas);
+flowVars.x=2;
+if(flowVars.NumberofETOPSAreas>0){
+
+for(int j=0;j<flowVars.NumberofETOPSAreas;j++){
+flowVars.forLoopData=flowVars.data4.substring(flowVars.x,flowVars.x+108);
+flowVars.eptopsdata.add(flowVars.forLoopData);
+flowVars.x=flowVars.x+108;
+}
+}else{
+flowVars.x=flowVars.x;
+}
+
+if(flowVars.data4.substring(flowVars.x).length()>2){
+flowVars.NoofPETs=flowVars.data4.substring(flowVars.x,flowVars.x+2).trim();
+flowVars.NumberofPETs=Integer.parseInt(flowVars.NoofPETs);
+if(flowVars.NumberofPETs>0){
+flowVars.x=flowVars.x+2;
+for(int l=0;l<flowVars.NumberofPETs;l++){
+flowVars.forLoopData=flowVars.data4.substring(flowVars.x,flowVars.x+109);
+flowVars.petdata.add(flowVars.forLoopData);
+flowVars.x=flowVars.x+109;
+}
+}else{flowVars.x=flowVars.x+2} 
+}else{
+sessionVars.errorDetails.add("Number of PETDETAILS are not avilable ")
+}
+if(flowVars.data4.substring(flowVars.x).length()>2){
+
+flowVars.NoofSuitableAirports=flowVars.data4.substring(flowVars.x,flowVars.x+2).trim();
+flowVars.NumberofSuitableAirports=Integer.parseInt(flowVars.NoofSuitableAirports);
+if(flowVars.NumberofSuitableAirports>0){
+flowVars.x=flowVars.x+2;
+for(int m=0;m<flowVars.NumberofSuitableAirports;m++){
+flowVars.forLoopData=flowVars.data4.substring(flowVars.x,flowVars.x+40);
+flowVars.suitablAirportdata.add(flowVars.forLoopData);
+flowVars.x=flowVars.x+40;
+}
+}else{flowVars.x=flowVars.x+2} 
+}else{
+sessionVars.errorDetails.add("Number of suitable airport details are not avilable ")
+}
+if(flowVars.data4.substring(flowVars.x).length()>2){
+
+flowVars.NoofAdequateAirports=flowVars.data4.substring(flowVars.x,flowVars.x+2).trim();
+flowVars.NumberofAdequateAirports=Integer.parseInt(flowVars.NoofAdequateAirports);
+if(flowVars.NumberofAdequateAirports>0){
+flowVars.x=flowVars.x+2;
+for(int n=0;n<flowVars.NumberofAdequateAirports;n++){
+flowVars.forLoopData=flowVars.data4.substring(flowVars.x,flowVars.x+9);
+flowVars.adequatedata.add(flowVars.forLoopData);
+flowVars.x=flowVars.x+9;
+}
+}else{flowVars.x=flowVars.x+2} 
+
+}else{
+sessionVars.errorDetails.add("Number of adequate airports details are not avilable ")
+}
+}
+
+]]></expression-component>
+
+        <expression-component doc:name="DateValidation"><![CDATA[import java.text.*;import java.util.Date;
+
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyyHHmmss");
+sdff.setLenient(false);
+Date date1 = sdff.parse(flowVars.DateofMessage);
+
+SimpleDateFormat sdff1 = new SimpleDateFormat("ddMMMyyyy");
+sdff1.setLenient(false);
+Date date2 = sdff1.parse(flowVars.dateofOrigin);
+SimpleDateFormat sdff2 = new SimpleDateFormat("ddMMMyyyyHHmm");
+sdff1.setLenient(false);
+Date date3 = sdff2.parse(flowVars.STDETDoff);
+Date date4 = sdff2.parse(flowVars.ETAUTC);
+
+]]></expression-component>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.formatFile==&quot;true&quot;]">
+                <foreach collection="#[flowVars.dataArray]" doc:name="For Each">
+                    <expression-component doc:name="Expression"><![CDATA[flowVars.data4= payload;
+if(flowVars.data4.substring(0,11).matches("^[A-Za-z0-9 _]{11}$")){
+flowVars.waypoint=flowVars.data4.substring(0,11);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Waypoint Value wrong ");
+}
+if(flowVars.data4.substring(11,15).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.altitude=flowVars.data4.substring(11,15);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Altitude Value wrong ");
+}
+if(flowVars.data4.substring(15,19).matches("^[0-9 ]{4}$")){
+flowVars.estimatedTimeoverWaypoint=flowVars.data4.substring(15,19);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"EstimatedEplasedTime overWaypoint Value wrong ");
+}
+if(flowVars.data4.substring(19,22).matches("^[0-9 ]{3}$")){
+flowVars.estimatedTimetoNextWaypoint=flowVars.data4.substring(19,22);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"EstimatedEplasedTimetoNextWaypoint Value wrong ");
+}
+if(flowVars.data4.substring(22,30).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.waypointLongitude=flowVars.data4.substring(22,30);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" WaypointLongitudeValue wrong ");
+}
+if(flowVars.data4.substring(30,37).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.waypointLatitude=flowVars.data4.substring(30,37);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" WaypointLatitudeValue wrong ");
+}
+if(flowVars.data4.substring(37,43).matches("^[0-9 ]{6}$")){
+flowVars.estimateFuelonBoardoverWaypoint=flowVars.data4.substring(37,43);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Estimated fuel on board over waypoint Value wrong ");
+}
+if(flowVars.data4.substring(43,49).matches("^[0-9 ]{6}$")){
+flowVars.estimateFuelonBurnoverWaypoint=flowVars.data4.substring(43,49);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Estimated fuel on burn over waypoint Value wrong ");
+}
+if(flowVars.data4.substring(49,53).matches("^[0-9 ]{4}$")){
+flowVars.distanceToNextWaypoint=flowVars.data4.substring(49,53);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Distance to next waypoint in NM Value wrong ");
+}
+if(flowVars.data4.substring(53,56).matches("^[0-9 ]{3}$")){
+flowVars.outboundTrueTrack=flowVars.data4.substring(53,56);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Outbound TrueTrack Value wrong ");
+}
+if(flowVars.data4.substring(56,60).matches("^[0-9 ]{4}$")){
+flowVars.more/mea=flowVars.data4.substring(56,60);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" MORE/MEA in meters Value wrong ");
+}
+if(flowVars.data4.substring(60,64).matches("^[0-9 +-]{4}$")){
+flowVars.segmentWindComponentTrack=flowVars.data4.substring(60,64);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" SegmentWindComponentTrack Value wrong ");
+}
+if(flowVars.data4.substring(64,68).matches("^[0-9 +-]{4}$")){
+flowVars.segmentWindComponentCross=flowVars.data4.substring(64,68);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" SegmentWindComponentCross Value wrong ");
+}
+if(flowVars.data4.substring(68,71).matches("^[0-9 -]{3}$")){
+flowVars.segmentTemparature=flowVars.data4.substring(68,71);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" SegmentTemparature Value wrong ");
+}
+if(flowVars.data4.substring(71,74).matches("^[0-9 ]{3}$")){
+flowVars.segmentMachNumber=flowVars.data4.substring(71,74);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" SegmentTMach Number Value wrong ");
+}
+if(flowVars.data4.substring(74,82).trim()==""){
+flowVars.seperator=flowVars.data4.substring(74,82);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Seperator Value wrong ");
+}
+]]></expression-component>
+
+                </foreach>
+            </when>
+            <when expression="#[flowVars.formatFile==&quot;false&quot;]">
+                <expression-component doc:name="Expression"><![CDATA[if(flowVars.eptopsdata.size()>0){
+flowVars.x=0;
+for(int e=0;e<flowVars.eptopsdata.size();e++){
+if(flowVars.eptopsdata[flowVars.x].substring(0,6).matches("^[A-Za-z0-9 ]{6}$")){
+flowVars.Labelfor1stEntryPointofETOPSarea=flowVars.eptopsdata[flowVars.x].substring(0,6);
+}else{
+sessionVars.errorDetails.add("Labelfor1stEntryPointofETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(6,14).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.entrypointLongitudeETOPSarea=flowVars.eptopsdata[flowVars.x].substring(6,14);
+}else{
+sessionVars.errorDetails.add("entrypointLongitude in ETOPSarea value wrong");
+}
+
+if(flowVars.eptopsdata[flowVars.x].substring(14,21).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.entrypointLatitudeETOPSarea=flowVars.eptopsdata[flowVars.x].substring(14,21);
+}else{
+sessionVars.errorDetails.add("entrypointLatitude in ETOPSarea value wrong");
+}
+
+
+if(flowVars.eptopsdata[flowVars.x].substring(21,24).matches("^[A-Za-z0-9 ]{3}$")){
+flowVars.timeforDeparturetoEPTOSEntrypoint=flowVars.eptopsdata[flowVars.x].substring(21,24);
+}else{
+sessionVars.errorDetails.add("timeforDeparturetoEPTOSEntrypoint value wrong");
+}
+
+if(flowVars.eptopsdata[flowVars.x].substring(24,30).matches("^[0-9 ]{6}$")){
+flowVars.distanceFromDepartureToEtopsEntrypoint=flowVars.eptopsdata[flowVars.x].substring(24,30);
+}else{
+sessionVars.errorDetails.add("distanceFromDepartureToEtopsEntrypointvalue wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(30,36).matches("^[0-9 ]{6}$")){
+flowVars.remainingfuleBoardAtEtopsEntrypoint=flowVars.eptopsdata[flowVars.x].substring(30,36);
+}else{
+sessionVars.errorDetails.add("remainingfuleBoardAtEtopsEntrypoint value wrong");
+}
+
+if(flowVars.eptopsdata[flowVars.x].substring(36,40).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.ICAOcodeofairportEtopsEntrypoint=flowVars.eptopsdata[flowVars.x].substring(36,40);
+}else{
+sessionVars.errorDetails.add("ICAOcodeofairportEtopsEntrypoint value wrong");
+}
+
+
+if(flowVars.eptopsdata[flowVars.x].substring(40,45).matches("^[A-Za-z0-9 ]{5}$")){
+flowVars.IATAcodeofairportEtopsEntrypoint=flowVars.eptopsdata[flowVars.x].substring(40,45);
+}else{
+sessionVars.errorDetails.add("IATAcodeofairportEtopsEntrypoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(45,48).matches("^[0-9 ]{3}$")){
+flowVars.flightTimetoAirportEntryPointETOPSarea=flowVars.eptopsdata[flowVars.x].substring(45,48);
+}else{
+sessionVars.errorDetails.add("flightTimetoAirportEntryPointETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(48,54).matches("^[0-9 ]{6}$")){
+flowVars.estimatedFueltoAirportEntryPointETOPSarea=flowVars.eptopsdata[flowVars.x].substring(48,54);
+}else{
+sessionVars.errorDetails.add("flightTimetoAirportEntryPointETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(54,60).matches("^[A-Za-z0-9 ]{6}$")){
+flowVars.lableForExitpointEtopsArea=flowVars.eptopsdata[flowVars.x].substring(54,60);
+}else{
+sessionVars.errorDetails.add("lableForExitpointEtopsArea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(60,68).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.exitpointLongitudeETOPSarea=flowVars.eptopsdata[flowVars.x].substring(60,68);
+}else{
+sessionVars.errorDetails.add("exitpointLongitudeETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(68,75).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.exitpointLatitudeETOPSarea=flowVars.eptopsdata[flowVars.x].substring(68,75);
+}else{
+sessionVars.errorDetails.add("exitpointLatitudeETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(75,78).matches("^[0-9 ]{3}$")){
+flowVars.timeforDeparturetoEPTOSEnxitpoint=flowVars.eptopsdata[flowVars.x].substring(75,78);
+}else{
+sessionVars.errorDetails.add("timeforDeparturetoEPTOSEnxitpoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(78,84).matches("^[0-9 ]{6}$")){
+flowVars.distanceFromDepartureToEtopsExitpoint=flowVars.eptopsdata[flowVars.x].substring(78,84);
+}else{
+sessionVars.errorDetails.add("distanceFromDepartureToEtopsExitpoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(84,90).matches("^[0-9 ]{6}$")){
+flowVars.remainingfuleBoardAtEtopsEntrypoint=flowVars.eptopsdata[flowVars.x].substring(84,90);
+}else{
+sessionVars.errorDetails.add("remainingfuleBoardAtEtopsEntrypoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(90,94).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.ICAOcodeofairportEtopsExitpoint=flowVars.eptopsdata[flowVars.x].substring(90,94);
+}else{
+sessionVars.errorDetails.add("ICAOcodeofairportEtopsExitpoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(94,99).matches("^[A-Za-z0-9 ]{5}$")){
+flowVars.IATAcodeofairportEtopsExitpoint=flowVars.eptopsdata[flowVars.x].substring(94,99);
+}else{
+sessionVars.errorDetails.add("IATAcodeofairportEtopsExitpoint value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(99,102).matches("^[0-9 ]{3}$")){
+flowVars.flightTimetoAirportExitPointETOPSarea=flowVars.eptopsdata[flowVars.x].substring(99,102);
+}else{
+sessionVars.errorDetails.add("flightTimetoAirportExitPointETOPSarea value wrong");
+}
+if(flowVars.eptopsdata[flowVars.x].substring(102,108).matches("^[0-9 ]{6}$")){
+flowVars.estimatedFueltoAirportExitPointETOPSarea=flowVars.eptopsdata[flowVars.x].substring(102,108);
+}else{
+sessionVars.errorDetails.add("flightTimetoAirportExitPointETOPSarea value wrong");
+}
+flowVars.x=flowVars.x+1;
+}
+}]]></expression-component>
+                <expression-component doc:name="Expression"><![CDATA[if(flowVars.petdata.size()>0){
+flowVars.x=0;
+for(int f=0;f<flowVars.petdata.size();f++){
+if(flowVars.petdata[flowVars.x].substring(0,5).matches("^[A-Za-z0-9 ]{5}$")){
+flowVars.Labelfor1stEntryPointofPETarea=flowVars.petdata[flowVars.x].substring(0,5);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" Labelfor1stEntryPointofPETarea value wrong ");
+}
+if(flowVars.petdata[flowVars.x].substring(5,13).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.entrypointLongitudePETarea=flowVars.petdata[flowVars.x].substring(5,13);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" entrypointLongitudePETarea value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(13,20).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.entrypointLatitudePETarea=flowVars.petdata[flowVars.x].substring(13,20);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" entrypointLongitudePETarea value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(20,23).matches("^[0-9 ]{3}$")){
+flowVars.timeforDeparturetoPETareaEntrypoint=flowVars.petdata[flowVars.x].substring(20,23);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" timeforDeparturetoPETareaEntrypoint value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(23,29).matches("^[0-9 ]{6}$")){
+flowVars.distanceFromDepartureToPETareaEntrypoint=flowVars.petdata[flowVars.x].substring(23,29);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" distanceFromDepartureToPETareaEntrypoint value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(29,35).matches("^[0-9 ]{6}$")){
+flowVars.remainingfuleBoardAtPETareaEntrypoint=flowVars.petdata[flowVars.x].substring(29,35);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" remainingfuleBoardAtPETareaEntrypoint value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(35,39).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.ICAOcodeofairportPETareaEntrypoint=flowVars.petdata[flowVars.x].substring(35,39);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" ICAOcodeofairportPETareaEntrypoint value wrong");
+}
+
+if(flowVars.petdata[flowVars.x].substring(39,44).matches("^[A-Za-z ]{5}$")){
+flowVars.IATAcodeofairportPETareantrypoint=flowVars.petdata[flowVars.x].substring(39,44);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" IATAcodeofairportPETareantrypoint value wrong");
+}
+
+if(flowVars.petdata[flowVars.x].substring(44,47).matches("^[0-9 ]{3}$")){
+flowVars.flightTimetoAirportEntryPointPETarea=flowVars.petdata[flowVars.x].substring(44,47);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" flightTimetoAirportEntryPointPETarea value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(47,53).matches("^[0-9 ]{6}$")){
+flowVars.FuelinclPETtoSA=flowVars.petdata[flowVars.x].substring(47,53);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" FuelinclPETtoSA value wrong");
+}
+
+if(flowVars.petdata[flowVars.x].substring(53,57).matches("^[A-Za-z0-9 +-]{4}$")){
+flowVars.crosswindatSA=flowVars.petdata[flowVars.x].substring(53,57);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" crosswindatSA1 value wrong");
+}
+
+if(flowVars.petdata[flowVars.x].substring(57,61).matches("^[A-Za-z0-9 +-]{4}$")){
+flowVars.TrackWindPETtoSA=flowVars.petdata[flowVars.x].substring(57,61);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" TrackWindPETtoSA1 value wrong");
+}
+
+if(flowVars.petdata[flowVars.x].substring(61,66).matches("^[0-9 ]{5}$")){
+flowVars.cellingatSA=flowVars.petdata[flowVars.x].substring(61,66);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" TrackWindPETtoSA1 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(66,71).matches("^[0-9 ]{5}$")){
+flowVars.visibilityatSA=flowVars.petdata[flowVars.x].substring(66,71);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" visibilityatSA1 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(71,75).matches("^[A-Za-z0-9 ]{4}$")){
+flowVars.petairportnoICAO=flowVars.petdata[flowVars.x].substring(71,75);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" petairportnoICAO value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(75,80).matches("^[A-Za-z ]{5}$")){
+flowVars.petairportnoIATA=flowVars.petdata[flowVars.x].substring(75,80);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" petairportnoIATA value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(80,83).matches("^[0-9 ]{3}$")){
+flowVars.flightTimetoAirportEntryPointPETarea=flowVars.petdata[flowVars.x].substring(80,83);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" flightTimetoAirportEntryPointPETarea value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(83,89).matches("^[0-9 ]{6}$")){
+flowVars.FuelinclPETtoSA2=flowVars.petdata[flowVars.x].substring(83,89);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" FuelinclPETtoSA2 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(89,93).matches("^[A-Za-z0-9 +-]{4}$")){
+flowVars.crosswindatSA2=flowVars.petdata[flowVars.x].substring(90,94);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" crosswindatSA2 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(93,97).matches("^[A-Za-z0-9 +-]{4}$")){
+flowVars.TrackWindPETtoSA2=flowVars.petdata[flowVars.x].substring(93,97);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" TrackWindPETtoSA2 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(97,102).matches("^[0-9 ]{5}$")){
+flowVars.cellingatSA2=flowVars.petdata[flowVars.x].substring(97,102);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" cellingatSA2 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(102,107).matches("^[0-9 ]{5}$")){
+flowVars.visibilityatSA2=flowVars.petdata[flowVars.x].substring(102,107);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" visibilityatSA2 value wrong");
+}
+if(flowVars.petdata[flowVars.x].substring(107,109).matches("^[A-Za-z0-9 ]{2}$")){
+flowVars.PETFlightCase=flowVars.petdata[flowVars.x].substring(107,109);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" PETFlightCase value wrong");
+}
+flowVars.x=flowVars.x+1;
+}
+}]]></expression-component>
+                <expression-component doc:name="Expression"><![CDATA[if(flowVars.suitablAirportdata.size()>0){
+flowVars.x=0;
+for(int f=0;f<flowVars.suitablAirportdata.size();f++){
+if(flowVars.suitablAirportdata[flowVars.x].substring(0,5).matches("^[A-Za-z ]{5}$")){
+flowVars.suitableAirportIATA=flowVars.suitablAirportdata[flowVars.x].substring(0,5);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" suitableAirportIATA value wrong");
+}
+if(flowVars.suitablAirportdata[flowVars.x].substring(5,9).matches("^[A-Za-z ]{4}$")){
+flowVars.suitableAirportICAO=flowVars.suitablAirportdata[flowVars.x].substring(5,9);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" suitableAirportICAO value wrong");
+}
+if(flowVars.suitablAirportdata[flowVars.x].substring(9,15).matches("^[0-9 ]{6}$")){
+flowVars.availablefrom=flowVars.suitablAirportdata[flowVars.x].substring(9,15);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" availablefrom value wrong");
+}
+if(flowVars.suitablAirportdata[flowVars.x].substring(15,21).matches("^[0-9 ]{6}$")){
+flowVars.availableTill=flowVars.suitablAirportdata[flowVars.x].substring(15,21);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" availableTill value wrong");
+}
+if(flowVars.suitablAirportdata[flowVars.x].substring(21,26).matches("^[0-9 ]{5}$")){
+flowVars.worstWxCelling=flowVars.suitablAirportdata[flowVars.x].substring(21,26);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" worstWxCelling value wrong");
+}
+if(flowVars.suitablAirportdata[flowVars.x].substring(26,31).matches("^[0-9 ]{5}$")){
+flowVars.worstWxVisibility=flowVars.suitablAirportdata[flowVars.x].substring(26,31);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" worstWxVisibility value wrong");
+}
+
+if(flowVars.suitablAirportdata[flowVars.x].substring(31,40).matches("^[A-Za-z0-9 -]{9}$")){
+flowVars.fromtoTill=flowVars.suitablAirportdata[flowVars.x].substring(31,40);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" fromtoTill value wrong");
+}
+flowVars.x=flowVars.x+1;
+}
+}]]></expression-component>
+                <expression-component doc:name="Expression"><![CDATA[if(flowVars.adequatedata.size()>0){
+flowVars.x=0;
+for(int f=0;f<flowVars.adequatedata.size();f++){
+if(flowVars.adequatedata[flowVars.x].substring(0,5).matches("^[A-Za-z ]{5}$")){
+flowVars.adequetAirportIATA=flowVars.adequatedata[flowVars.x].substring(0,5);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" adequetAirportIATA value wrong");
+}
+if(flowVars.adequatedata[flowVars.x].substring(5,9).matches("^[A-Za-z ]{4}$")){
+flowVars.adequetAirportICAO=flowVars.adequatedata[flowVars.x].substring(5,9);
+}else{
+sessionVars.errorDetails.add(flowVars.x+" adequetAirportICAO value wrong");
+}
+flowVars.x=flowVars.x+1;
+}
+}]]></expression-component>
+            </when>
+
+            <otherwise>
+                <set-variable variableName="errorrise" value="#[payload.data.data]" doc:name="errorrise"/>
+            </otherwise>
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.errorDetails.size()==0]">
+                <choice doc:name="Choice">
+                    <when expression="#[flowVars.formatFile==&quot;true&quot;]">
+                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                            <db:parameterized-query><![CDATA[insert into LIDO_FSUM_FLIGHTSUMMARYMESSAGE (SNO,INFO_TYPE,DATE_OF_MESSAGE,SEPARATOR,AIRLINE_DESIGNATOR_IATA,FLIGHT_NUMBER ,OPERATIONAL_SUFFIX,DATE_OF_ORIGIN_UTC,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,DEPARTURE_AIRPORT_ICAO,DESTINATION_AIRPORT_ICAO,DEPARTURE_RUNWAY,ARRIVAL_RUNWAY,AIRCRAFT_FIN_NUMBER,AIRCRAFT_RADIO_CALL_SIGN,IATA_AIRCRAFT_TYPE,SEPARATOR01,FLIGHT_DUPLICATION_NO,SEPARATOR02,STD_ETD_UTC__OFFBLOCK,ETA_UTC ,SEPARATOR03,TAKEOFF_ALTERNATE_IATA, TAKEOFF_ALTERNATE_ICAO,NO_OF_ALTERNATES,ALTERNATE_IATA_1ST,ALTERNATE_ICAO_1ST,ALTERNATE_IATA_2ND,ALTERNATE_ICAO_2ND  ,ALTERNATE_IATA_3RD,ALTERNATE_ICAO_3RD,ALTERNATE_IATA_4TH,ALTERNATE_ICAO_4TH,AIRCRAFT_ICAO_CODE,RELEASE_INDICATOR,SCENARIO_NUMBER,OFP_NUMBER,RCL_NUMBER,ETOPS_INDICATOR,SEPARATOR04,ATC_CALLSIGN,UNIT_OF_MEASURE,TRIP_DISTANCE_IN_NM_AIR,TRIP_DISTANCE_IN_NM_GROUND,GREAT_CIRCLE_DISTANCE_IN_NM,AVERAGE_WIND_COMPONENT_IN_KTS,TAXI_FUEL_OUT,TAXI_FUEL_IN,TRIP_FUEL,BLOCK_FUEL,PLANNED_HOLDING_FUEL,ADDITIONAL_FUEL1,REASON_FOR_ADDFU1,ADDITIONAL_FUEL2,REASON_FOR_ADDFU2,ADDITIONAL_FUEL3,REASON_FOR_ADDFU3,ADDITIONAL_FUEL4,REASON_FOR_ADDFU4,CONTINGENCY_FUEL,TANK_CAPACITY,MAX_LANDING_WEIGHT,PLANNED_TO_WEIGHT,MAX_TO_WEIGHT,MAX_TAXI_WEIGHT,PLN_ZFW,MAX_ZFW,FUEL_OVER_DESTINATION,ECONOMIC_FUEL,SAVING_IN_USD,ROUTE_OPTIMIZATION_CRITERIA,TAXI_OUT_TIME_IN_MINUTES,TAXI_IN_TIME_IN_MINUTES,TRIP_TIME_IN_MINUTES,PLANNED_BLOCK_TIME,ESTIM_TOTAL_FLIGHT_TIME,PLANNED_HOLDING_TIME,EXTRA_TIME1,EXTRA_TIME2,EXTRA_TIME3,EXTRA_TIME4,CONTINGENCY_TIME,SEPARATOR05,AIRCRAFT_OPERATOR,AIRCRAFT_SPEED_PROCEDURE,COSTINDEX_ECO_CRUISE,PERFORMANCE_CORRECTION,CONTINGENCY_COVERAGE,CONTINGENCY_PERCENTAGE,ENROUTE_FUEL_ALTERNATE,NO_ENROUTE_ALTERNATEPERCENTAGE,TRIP_FUELCORRECTION_ZFW_1000KG,TRIP_FUELCORRECTIONZFW_1000KG1,TRIP_FUEL_ONEFLBELOW,GAIN,PREDEFINED_ROUTE_NAME,PIC_NAME,DISPATCHER_NAME,DISPATCHER_REMARK,ALTITUDE_AT_TOP_OF_CLIMB,ALTITUDE_AT_TOP_OF_DESCEND,SEPARATOR06,ALTERNATE_FLIGHT_DISTANCEINNM1,ALTERNATE_FLIGHTTIMEINMINUTES1,ALTERNATE_FUEL1,ALTERNATEFLIGHTDISTANCEINNM2,ALTERNATEFLIGHTTIMEINMINUTES2,ALTERNATE_FUEL2,ALTERNATEFLIGHTDISTANCEINNM3,ALTERNATEFLIGHTTIMEINMINUTES3,ALTERNATE_FUEL3,ALTERNATEFLIGHTDISTANCEINNM4,ALTERNATEFLIGHTTIMEINMINUTES4,ALTERNATE_FUEL4,SEPARATOR07,SID,SID_EXIT_POINT,SID_DISTANCE,STAR,STAR_ENTRY_POINT,STAR_DISTANCE,WAYPOINTOFMAINROUTINGDEPDEST,DEPARTUREALTERNATEDEPDEPALTN,DESTINATIONALTERNATE1ST,DESTINATIONALTERNATE2ND,DESTINATIONALTERNATE3ND,DESTINATIONALTERNATE4ND,RECLEARANCEAIRPORT,RECLEARANCEALTERNATE,TOTALNUMBEROFWAYPOINTINMESSAGE,SEPARATOR08,ETOPS,ETOPS_BORDER_TIME,ETOPSRULETIME,ONEENGINEOUTTRUEAIRSPEED,MOSTCRITICALPOINTLONGITUDE,MOSTCRITICALPOINTLATITUDE,ETOPSADDITIONALFUEL,NUMBEROFETOPSAREAS,NUMBEROFPETS,NUMBEROFSUITABLEAIRPORTS,NUMBEROFADEQUATEAIRPORTS) values (LIDO_FLIGHTSUMMERY_SEQ.nextval,#[flowVars.infotype],CURRENT_TIMESTAMP,#[flowVars.seperator1],#[flowVars.airLineDesignator],#[flowVars.flightNumber],#[flowVars.operationalSuffix],to_date(#[flowVars.dateofOrigin],'DDMONYYYY'),#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.dpartureAirportICAO],#[flowVars.destinationAirportICAO],#[flowVars.departureRunway],#[flowVars.arrivalRunway],#[flowVars.registrationNo],#[flowVars.aircraftRadioCallsign],#[flowVars.IATAaircraft],#[flowVars.seperator2],#[flowVars.flightduplicateNo],#[flowVars.seperator3],CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,#[flowVars.seperator4],#[flowVars.takeoffAltIATA],#[flowVars.takeoffAltICAO],#[flowVars.noofAlt],#[flowVars.1AltIATA],#[flowVars.1AltICAO],#[flowVars.2AltIATA],#[flowVars.2AltICAO],#[flowVars.3AltIATA],#[flowVars.3AltICAO],#[flowVars.4AltIATA],#[flowVars.4AltICAO],#[flowVars.aircraftICAOCode],#[flowVars.releaseIndicator],#[flowVars.scenarioNo],#[flowVars.OFPno],#[flowVars.RCLno],#[flowVars.ETOPSindicator],#[flowVars.seperator5],#[flowVars.ATCcallsign],#[flowVars.unitofMessure],#[flowVars.tripdistanceAir],#[flowVars.tripdistanceGround],#[flowVars.greateCircle],#[flowVars.avgWindComponent],#[flowVars.taxifuleOut],#[flowVars.taxifuelIn],#[flowVars.tripfule],#[flowVars.blockfule],#[flowVars.plannedHoldingfule],#[flowVars.ADDFU1],#[flowVars.reasonADDFU1],#[flowVars.ADDFU2],#[flowVars.reasonADDFU2],#[flowVars.ADDFU3],#[flowVars.reasonADDFU3],#[flowVars.ADDFU4],#[flowVars.reasonADDFU4],#[flowVars.contgFule],#[flowVars.tankcapacity],#[flowVars.maxLandingWeight],#[flowVars.plannedTOWeight],#[flowVars.maxTOWeight],#[flowVars.maxTaxiWeight],#[flowVars.PlnZFW],#[flowVars.maxZFW],#[flowVars.fuleOverDest],#[flowVars.economicfule],#[flowVars.savinginUSD],#[flowVars.routeOtimizationCriteria],#[flowVars.taxiOutTime],#[flowVars.taxiInTime],#[flowVars.tripInmin],#[flowVars.blockTime],#[flowVars.estTotalflightTime],#[flowVars.plannedHolding],#[flowVars.Extratime1],#[flowVars.Extratime2],#[flowVars.Extratime3],#[flowVars.Extratime4],#[flowVars.contgTime],#[flowVars.seperator6],#[flowVars.aircraftOperator],#[flowVars.aircraftSpeedPreducer],#[flowVars.costIndexECO],#[flowVars.performanceCollection],#[flowVars.contgCoverage],#[flowVars.contgPercet],#[flowVars.enrouteFuel],#[flowVars.noenrouteFule],#[flowVars.tripfuelCorrect1],#[flowVars.tripfuleCorrect2],#[flowVars.tripfulebelowFL],#[flowVars.gainToloss],#[flowVars.predefinedRouteName],#[flowVars.picName],#[flowVars.dispatureName],#[flowVars.dispatureRemark],#[flowVars.altitudeatTopofClimb],#[flowVars.altitudeatTopofDescend],#[flowVars.seperator7],#[flowVars.1AltFlightDist],#[flowVars.1AltFlightTime],#[flowVars.1AltFule],#[flowVars.2AltFlightDist],#[flowVars.2AltFlightTime],#[flowVars.2AltFule],#[flowVars.3AltFlightDist],#[flowVars.3AltFlightTime],#[flowVars.3AltFule],#[flowVars.4AltFlightDist],#[flowVars.4AltFlightTime],#[flowVars.4AltFule],#[flowVars.seperator8],#[flowVars.SID],#[flowVars.SIDExit],#[flowVars.SIDdist],#[flowVars.STAR],#[flowVars.STAREntry],#[flowVars.STARdist],#[flowVars.noofWaypointDeptToDest],#[flowVars.noofWaypointDeptAlt],#[flowVars.noofWaypointDestAlt1],#[flowVars.noofWaypointDestAlt2],#[flowVars.noofWaypointDestAlt3],#[flowVars.noofWaypointDestAlt4],#[flowVars.noofWaypointRouteclear],#[flowVars.noofWaypointRouteclearAlt],#[flowVars.totalnoofWaypointinMessage],#[flowVars.seperator9],#[flowVars.ETOPS],#[flowVars.ETOPSBorderTime],#[flowVars.ETOPSRuleTime],#[flowVars.OneengineoutTrueAirSpeed],#[flowVars.MostCriticalPointlongitude],#[flowVars.MostCriticalPointlatitude],#[flowVars.ETOPSAdditionalFuel],#[flowVars.NumberofETOPSAreas],#[flowVars.NumberofPETs],#[flowVars.NumberofSuitableAirports],#[flowVars.NumberofAdequateAirports])]]></db:parameterized-query>
+                        </db:insert>
+                        <foreach collection="#[flowVars.dataArray]" doc:name="For Each">
+                            <expression-component doc:name="Expression"><![CDATA[flowVars.data4= payload;
+flowVars.waypoint=flowVars.data4.substring(0,11);
+flowVars.altitude=flowVars.data4.substring(11,15);
+flowVars.estimatedTimeoverWaypoint=flowVars.data4.substring(15,19);
+flowVars.estimatedTimetoNextWaypoint=flowVars.data4.substring(19,22);
+flowVars.waypointLongitude=flowVars.data4.substring(22,30);
+flowVars.waypointLatitude=flowVars.data4.substring(30,37);
+flowVars.estimateFuelonBoardoverWaypoint=flowVars.data4.substring(37,43);
+flowVars.estimateFuelonBurnoverWaypoint=flowVars.data4.substring(43,49);
+flowVars.distanceToNextWaypoint=flowVars.data4.substring(49,53);
+flowVars.outboundTrueTrack=flowVars.data4.substring(53,56);
+flowVars.moremea=flowVars.data4.substring(56,60);
+flowVars.segmentWindComponentTrack=flowVars.data4.substring(60,64);
+flowVars.segmentWindComponentCross=flowVars.data4.substring(64,68);
+flowVars.segmentTemparature=flowVars.data4.substring(68,71);
+flowVars.segmentMachNumber=flowVars.data4.substring(71,74);
+flowVars.seperator=flowVars.data4.substring(74,82);
+
+]]></expression-component>
+                            <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                <db:parameterized-query><![CDATA[insert into LIDO_FSUM_WAYPOINT (SNO_FK,DATE_OF_MESSAGE_FK,WAYPOINT,ALTITUDE,TIMEOVERWAYPOINTINMINUTES,TIMETONEXTWAYPOINTINMINUTES,WAYPOINTLONGITUDE,WAYPOINTLATITUDE,FUELONBOARDOVERWAYPOINT,TOTALFUELBURNOVERWAYPOINT,DISTANCETONEXTWAYPOINTINNM,OUTBOUNDTRUETRACK,MORAMEAINMETER,SEGMENTWINDCOMPONENTTRACK,SEGMENTWINDCOMPONENTCROSS,SEGMENTTEMPERATURE,SEGMENTMACHNUMBER,SEPARATOR09,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,AIRCRAFT_FIN_NUMBER) values ((SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE),(select date_of_message from LIDO_FSUM_FLIGHTSUMMARYMESSAGE where sno = (SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE)),#[flowVars.waypoint],#[flowVars.altitude],#[flowVars.estimatedTimeoverWaypoint],#[flowVars.estimatedTimetoNextWaypoint],#[flowVars.waypointLongitude],#[flowVars.waypointLatitude],#[flowVars.estimateFuelonBoardoverWaypoint],#[flowVars.estimateFuelonBurnoverWaypoint],#[flowVars.distanceToNextWaypoint],#[flowVars.outboundTrueTrack],#[flowVars.moremea],#[flowVars.segmentWindComponentTrack],#[flowVars.segmentWindComponentCross],#[flowVars.segmentTemparature],#[flowVars.segmentMachNumber],#[flowVars.seperator],#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.registrationNo])]]></db:parameterized-query>
+
+                            </db:insert>
+                        </foreach>
+                    </when>
+                    <otherwise>
+                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                            <db:parameterized-query><![CDATA[insert into LIDO_FSUM_FLIGHTSUMMARYMESSAGE (SNO,INFO_TYPE,DATE_OF_MESSAGE,SEPARATOR,AIRLINE_DESIGNATOR_IATA,FLIGHT_NUMBER ,OPERATIONAL_SUFFIX,DATE_OF_ORIGIN_UTC,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,DEPARTURE_AIRPORT_ICAO,DESTINATION_AIRPORT_ICAO,DEPARTURE_RUNWAY,ARRIVAL_RUNWAY,AIRCRAFT_FIN_NUMBER,AIRCRAFT_RADIO_CALL_SIGN,IATA_AIRCRAFT_TYPE,SEPARATOR01,FLIGHT_DUPLICATION_NO,SEPARATOR02,STD_ETD_UTC__OFFBLOCK,ETA_UTC ,SEPARATOR03,TAKEOFF_ALTERNATE_IATA, TAKEOFF_ALTERNATE_ICAO,NO_OF_ALTERNATES,ALTERNATE_IATA_1ST,ALTERNATE_ICAO_1ST,ALTERNATE_IATA_2ND,ALTERNATE_ICAO_2ND  ,ALTERNATE_IATA_3RD,ALTERNATE_ICAO_3RD,ALTERNATE_IATA_4TH,ALTERNATE_ICAO_4TH,AIRCRAFT_ICAO_CODE,RELEASE_INDICATOR,SCENARIO_NUMBER,OFP_NUMBER,RCL_NUMBER,ETOPS_INDICATOR,SEPARATOR04,ATC_CALLSIGN,UNIT_OF_MEASURE,TRIP_DISTANCE_IN_NM_AIR,TRIP_DISTANCE_IN_NM_GROUND,GREAT_CIRCLE_DISTANCE_IN_NM,AVERAGE_WIND_COMPONENT_IN_KTS,TAXI_FUEL_OUT,TAXI_FUEL_IN,TRIP_FUEL,BLOCK_FUEL,PLANNED_HOLDING_FUEL,ADDITIONAL_FUEL1,REASON_FOR_ADDFU1,ADDITIONAL_FUEL2,REASON_FOR_ADDFU2,ADDITIONAL_FUEL3,REASON_FOR_ADDFU3,ADDITIONAL_FUEL4,REASON_FOR_ADDFU4,CONTINGENCY_FUEL,TANK_CAPACITY,MAX_LANDING_WEIGHT,PLANNED_TO_WEIGHT,MAX_TO_WEIGHT,MAX_TAXI_WEIGHT,PLN_ZFW,MAX_ZFW,FUEL_OVER_DESTINATION,ECONOMIC_FUEL,SAVING_IN_USD,ROUTE_OPTIMIZATION_CRITERIA,TAXI_OUT_TIME_IN_MINUTES,TAXI_IN_TIME_IN_MINUTES,TRIP_TIME_IN_MINUTES,PLANNED_BLOCK_TIME,ESTIM_TOTAL_FLIGHT_TIME,PLANNED_HOLDING_TIME,EXTRA_TIME1,EXTRA_TIME2,EXTRA_TIME3,EXTRA_TIME4,CONTINGENCY_TIME,SEPARATOR05,AIRCRAFT_OPERATOR,AIRCRAFT_SPEED_PROCEDURE,COSTINDEX_ECO_CRUISE,PERFORMANCE_CORRECTION,CONTINGENCY_COVERAGE,CONTINGENCY_PERCENTAGE,ENROUTE_FUEL_ALTERNATE,NO_ENROUTE_ALTERNATEPERCENTAGE,TRIP_FUELCORRECTION_ZFW_1000KG,TRIP_FUELCORRECTIONZFW_1000KG1,TRIP_FUEL_ONEFLBELOW,GAIN,PREDEFINED_ROUTE_NAME,PIC_NAME,DISPATCHER_NAME,DISPATCHER_REMARK,ALTITUDE_AT_TOP_OF_CLIMB,ALTITUDE_AT_TOP_OF_DESCEND,SEPARATOR06,ALTERNATE_FLIGHT_DISTANCEINNM1,ALTERNATE_FLIGHTTIMEINMINUTES1,ALTERNATE_FUEL1,ALTERNATEFLIGHTDISTANCEINNM2,ALTERNATEFLIGHTTIMEINMINUTES2,ALTERNATE_FUEL2,ALTERNATEFLIGHTDISTANCEINNM3,ALTERNATEFLIGHTTIMEINMINUTES3,ALTERNATE_FUEL3,ALTERNATEFLIGHTDISTANCEINNM4,ALTERNATEFLIGHTTIMEINMINUTES4,ALTERNATE_FUEL4,SEPARATOR07,SID,SID_EXIT_POINT,SID_DISTANCE,STAR,STAR_ENTRY_POINT,STAR_DISTANCE,WAYPOINTOFMAINROUTINGDEPDEST,DEPARTUREALTERNATEDEPDEPALTN,DESTINATIONALTERNATE1ST,DESTINATIONALTERNATE2ND,DESTINATIONALTERNATE3ND,DESTINATIONALTERNATE4ND,RECLEARANCEAIRPORT,RECLEARANCEALTERNATE,TOTALNUMBEROFWAYPOINTINMESSAGE,SEPARATOR08,ETOPS,ETOPS_BORDER_TIME,ETOPSRULETIME,ONEENGINEOUTTRUEAIRSPEED,MOSTCRITICALPOINTLONGITUDE,MOSTCRITICALPOINTLATITUDE,ETOPSADDITIONALFUEL,NUMBEROFETOPSAREAS,NUMBEROFPETS,NUMBEROFSUITABLEAIRPORTS,NUMBEROFADEQUATEAIRPORTS) values (LIDO_FLIGHTSUMMERY_SEQ.nextval,#[flowVars.infotype],CURRENT_TIMESTAMP,#[flowVars.seperator1],#[flowVars.airLineDesignator],#[flowVars.flightNumber],#[flowVars.operationalSuffix],to_date(#[flowVars.dateofOrigin],'DDMONYYYY'),#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.dpartureAirportICAO],#[flowVars.destinationAirportICAO],#[flowVars.departureRunway],#[flowVars.arrivalRunway],#[flowVars.registrationNo],#[flowVars.aircraftRadioCallsign],#[flowVars.IATAaircraft],#[flowVars.seperator2],#[flowVars.flightduplicateNo],#[flowVars.seperator3],CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,#[flowVars.seperator4],#[flowVars.takeoffAltIATA],#[flowVars.takeoffAltICAO],#[flowVars.noofAlt],#[flowVars.1AltIATA],#[flowVars.1AltICAO],#[flowVars.2AltIATA],#[flowVars.2AltICAO],#[flowVars.3AltIATA],#[flowVars.3AltICAO],#[flowVars.4AltIATA],#[flowVars.4AltICAO],#[flowVars.aircraftICAOCode],#[flowVars.releaseIndicator],#[flowVars.scenarioNo],#[flowVars.OFPno],#[flowVars.RCLno],#[flowVars.ETOPSindicator],#[flowVars.seperator5],#[flowVars.ATCcallsign],#[flowVars.unitofMessure],#[flowVars.tripdistanceAir],#[flowVars.tripdistanceGround],#[flowVars.greateCircle],#[flowVars.avgWindComponent],#[flowVars.taxifuleOut],#[flowVars.taxifuelIn],#[flowVars.tripfule],#[flowVars.blockfule],#[flowVars.plannedHoldingfule],#[flowVars.ADDFU1],#[flowVars.reasonADDFU1],#[flowVars.ADDFU2],#[flowVars.reasonADDFU2],#[flowVars.ADDFU3],#[flowVars.reasonADDFU3],#[flowVars.ADDFU4],#[flowVars.reasonADDFU4],#[flowVars.contgFule],#[flowVars.tankcapacity],#[flowVars.maxLandingWeight],#[flowVars.plannedTOWeight],#[flowVars.maxTOWeight],#[flowVars.maxTaxiWeight],#[flowVars.PlnZFW],#[flowVars.maxZFW],#[flowVars.fuleOverDest],#[flowVars.economicfule],#[flowVars.savinginUSD],#[flowVars.routeOtimizationCriteria],#[flowVars.taxiOutTime],#[flowVars.taxiInTime],#[flowVars.tripInmin],#[flowVars.blockTime],#[flowVars.estTotalflightTime],#[flowVars.plannedHolding],#[flowVars.Extratime1],#[flowVars.Extratime2],#[flowVars.Extratime3],#[flowVars.Extratime4],#[flowVars.contgTime],#[flowVars.seperator6],#[flowVars.aircraftOperator],#[flowVars.aircraftSpeedPreducer],#[flowVars.costIndexECO],#[flowVars.performanceCollection],#[flowVars.contgCoverage],#[flowVars.contgPercet],#[flowVars.enrouteFuel],#[flowVars.noenrouteFule],#[flowVars.tripfuelCorrect1],#[flowVars.tripfuleCorrect2],#[flowVars.tripfulebelowFL],#[flowVars.gainToloss],#[flowVars.predefinedRouteName],#[flowVars.picName],#[flowVars.dispatureName],#[flowVars.dispatureRemark],#[flowVars.altitudeatTopofClimb],#[flowVars.altitudeatTopofDescend],#[flowVars.seperator7],#[flowVars.1AltFlightDist],#[flowVars.1AltFlightTime],#[flowVars.1AltFule],#[flowVars.2AltFlightDist],#[flowVars.2AltFlightTime],#[flowVars.2AltFule],#[flowVars.3AltFlightDist],#[flowVars.3AltFlightTime],#[flowVars.3AltFule],#[flowVars.4AltFlightDist],#[flowVars.4AltFlightTime],#[flowVars.4AltFule],#[flowVars.seperator8],#[flowVars.SID],#[flowVars.SIDExit],#[flowVars.SIDdist],#[flowVars.STAR],#[flowVars.STAREntry],#[flowVars.STARdist],#[flowVars.noofWaypointDeptToDest],#[flowVars.noofWaypointDeptAlt],#[flowVars.noofWaypointDestAlt1],#[flowVars.noofWaypointDestAlt2],#[flowVars.noofWaypointDestAlt3],#[flowVars.noofWaypointDestAlt4],#[flowVars.noofWaypointRouteclear],#[flowVars.noofWaypointRouteclearAlt],#[flowVars.totalnoofWaypointinMessage],#[flowVars.seperator9],#[flowVars.ETOPS],#[flowVars.ETOPSBorderTime],#[flowVars.ETOPSRuleTime],#[flowVars.OneengineoutTrueAirSpeed],#[flowVars.MostCriticalPointlongitude],#[flowVars.MostCriticalPointlatitude],#[flowVars.ETOPSAdditionalFuel],#[flowVars.NumberofETOPSAreas],#[flowVars.NumberofPETs],#[flowVars.NumberofSuitableAirports],#[flowVars.NumberofAdequateAirports])]]></db:parameterized-query>
+                        </db:insert>
+                        <choice doc:name="Choice">
+                            <when expression="#[flowVars.eptopsdata.size()&gt;0]">
+                                <foreach collection="#[flowVars.eptopsdata]" doc:name="For Each">
+                                    <expression-component doc:name="Expression"><![CDATA[
+flowVars.Labelfor1stEntryPointofETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(0,6);
+flowVars.entrypointLongitudeETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(6,14);
+flowVars.entrypointLatitudeETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(14,21);
+flowVars.timeforDeparturetoEPTOSEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(21,24);
+flowVars.distanceFromDepartureToEtopsEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(24,30);
+flowVars.remainingfuleBoardAtEtopsEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(30,36);
+flowVars.ICAOcodeofairportEtopsEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(36,40);
+flowVars.IATAcodeofairportEtopsEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(40,45);
+flowVars.flightTimetoAirportEntryPointETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(45,48);
+flowVars.estimatedFueltoAirportEntryPointETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(48,54);
+flowVars.lableForExitpointEtopsArea=flowVars.eptopsdata[flowVars.counter-1].substring(54,60);
+flowVars.exitpointLongitudeETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(60,68);
+flowVars.exitpointLatitudeETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(68,75);
+flowVars.timeforDeparturetoEPTOSEnxitpoint=flowVars.eptopsdata[flowVars.counter-1].substring(75,78);
+flowVars.distanceFromDepartureToEtopsExitpoint=flowVars.eptopsdata[flowVars.counter-1].substring(78,84);
+flowVars.remainingfuleBoardAtEtopsEntrypoint=flowVars.eptopsdata[flowVars.counter-1].substring(84,90);
+flowVars.ICAOcodeofairportEtopsExitpoint=flowVars.eptopsdata[flowVars.counter-1].substring(90,94);
+flowVars.IATAcodeofairportEtopsExitpoint=flowVars.eptopsdata[flowVars.counter-1].substring(94,99);
+flowVars.flightTimetoAirportExitPointETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(99,102);
+flowVars.estimatedFueltoAirportExitPointETOPSarea=flowVars.eptopsdata[flowVars.counter-1].substring(102,108);
+]]></expression-component>
+                                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_FSUM_ENTRYPOINT">
+                                        <db:parameterized-query><![CDATA[insert into LIDO_FSUM_ENTRYPOINT (SNO_FK1,DATE_OF_MESSAGE_FK1,LABELFORENTRYPOINTOFETOPSAREA,ENTRYPOINTLONGITUDE,ENTRYPOINTLATITUDE,TIMEFROMDEPARTURETOETOPSENTRYP,DISTANCEFROMDEPARTURETOETOPSEN,REMAININGFUELONBOARDATE,ICAOCODEOFSUITABLEAIRPORT,IATACODEOFSUITABLEAIRPORT,FLIGHTTIMETOSUITABLEAIRPORT,ESTIMATEDFUELINCLICINGFROMETOP,LABELFOREXITPOINTOFETOPSAREA,EXITPOINTLONGITUDE,EXITPOINTLATITUDE,TIMEFROMDEPARTURETOETOPSEXITPO,DISTANCEFROMDEPARTURETOETOPSEX,REMAININGFUELONBOARDATETOPSARE,ICAOCODEOFSUITABLEAIRPORTATETO,IATACODEOFSUITABLEAIRPORTATETO,FLIGHTTIMETOSUITABLEAIRPORTFRO,ESTIMATEDFUELINCLICINGFROMETO,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,AIRCRAFT_FIN_NUMBER) values ((SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE),((select date_of_message from LIDO_FSUM_FLIGHTSUMMARYMESSAGE where sno = (SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE)))
+,#[flowVars.Labelfor1stEntryPointofETOPSarea],#[flowVars.entrypointLongitudeETOPSarea],#[flowVars.entrypointLatitudeETOPSarea],#[flowVars.timeforDeparturetoEPTOSEntrypoint],#[flowVars.distanceFromDepartureToEtopsEntrypoint],#[flowVars.remainingfuleBoardAtEtopsEntrypoint],#[flowVars.ICAOcodeofairportEtopsEntrypoint],#[flowVars.IATAcodeofairportEtopsEntrypoint],#[flowVars.flightTimetoAirportEntryPointETOPSarea],#[flowVars.estimatedFueltoAirportEntryPointETOPSarea],#[flowVars.lableForExitpointEtopsArea],#[flowVars.exitpointLongitudeETOPSarea],#[flowVars.exitpointLatitudeETOPSarea],#[flowVars.timeforDeparturetoEPTOSEnxitpoint],#[flowVars.distanceFromDepartureToEtopsExitpoint],#[flowVars.remainingfuleBoardAtEtopsEntrypoint],#[flowVars.ICAOcodeofairportEtopsExitpoint],#[flowVars.IATAcodeofairportEtopsExitpoint],#[flowVars.flightTimetoAirportExitPointETOPSarea],#[flowVars.estimatedFueltoAirportExitPointETOPSarea],#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.registrationNo])]]></db:parameterized-query>
+                                    </db:insert>
+                                </foreach>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="eptopsdata1" value="#[payload]" doc:name="Variable"/>
+                            </otherwise>
+                        </choice>
+                        <choice doc:name="Choice">
+                            <when expression="#[flowVars.petdata.size()&gt;0]">
+                                <foreach collection="#[flowVars.petdata]" doc:name="For Each">
+                                    <expression-component doc:name="Expression"><![CDATA[
+flowVars.Labelfor1stEntryPointofPETarea=flowVars.petdata[flowVars.counter-1].substring(0,5);
+flowVars.entrypointLongitudePETarea=flowVars.petdata[flowVars.counter-1].substring(5,13);
+flowVars.entrypointLatitudePETarea=flowVars.petdata[flowVars.counter-1].substring(13,20);
+flowVars.timeforDeparturetoPETareaEntrypoint=flowVars.petdata[flowVars.counter-1].substring(20,23);
+flowVars.distanceFromDepartureToPETareaEntrypoint=flowVars.petdata[flowVars.counter-1].substring(23,29);
+flowVars.remainingfuleBoardAtPETareaEntrypoint=flowVars.petdata[flowVars.counter-1].substring(29,35);
+flowVars.ICAOcodeofairportPETareaEntrypoint=flowVars.petdata[flowVars.counter-1].substring(35,39);
+flowVars.IATAcodeofairportPETareantrypoint=flowVars.petdata[flowVars.counter-1].substring(39,44);
+flowVars.flightTimetoAirportEntryPointPETarea=flowVars.petdata[flowVars.counter-1].substring(44,47);
+flowVars.FuelinclPETtoSA=flowVars.petdata[flowVars.counter-1].substring(47,53);
+flowVars.crosswindatSA=flowVars.petdata[flowVars.counter-1].substring(53,57);
+flowVars.TrackWindPETtoSA=flowVars.petdata[flowVars.counter-1].substring(57,61);
+flowVars.cellingatSA=flowVars.petdata[flowVars.counter-1].substring(61,66);
+flowVars.visibilityatSA=flowVars.petdata[flowVars.counter-1].substring(66,71);
+flowVars.petairportnoICAO=flowVars.petdata[flowVars.counter-1].substring(71,75);
+flowVars.petairportnoIATA=flowVars.petdata[flowVars.counter-1].substring(75,80);
+flowVars.flightTimetoAirportEntryPointPETarea2=flowVars.petdata[flowVars.counter-1].substring(80,83);
+flowVars.FuelinclPETtoSA2=flowVars.petdata[flowVars.counter-1].substring(83,89);
+flowVars.crosswindatSA2=flowVars.petdata[flowVars.counter-1].substring(90,94);
+flowVars.TrackWindPETtoSA2=flowVars.petdata[flowVars.counter-1].substring(93,97);
+flowVars.cellingatSA2=flowVars.petdata[flowVars.counter-1].substring(97,102);
+flowVars.visibilityatSA2=flowVars.petdata[flowVars.counter-1].substring(102,107);
+flowVars.PETFlightCase=flowVars.petdata[flowVars.counter-1].substring(107,109);
+]]></expression-component>
+                                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_FSUM_PET">
+                                        <db:parameterized-query><![CDATA[insert into LIDO_FSUM_PET (sno_fk3,DATE_OF_MESSAGE_FK3,LABELFORPET,PETLONGITUDE,PETLATITUDE,FLIGHTTIMEDEPARTURE,DISTANCEDEPARTURETOPET,FUELONBOARDATPET,PETSUITABLEAIRPORTNO1ICAO,PETSUITABLEAIRPORTNO1IATA,FLIGHTTIMEPETTOSUITABLE,FUELINCLLCINGPETTOSA1,CROSSWINDATSA1,TRACKWINDPETTOSA1,CEILINGATSA1,VISIBILITYATSA1,PETSUITABLEAIRPORTNO2ICAO,PETSUITABLEAIRPORTNO2IATA,FLIGHTTIMEPETTOSUITABLEAIRPORT,FUELINCLLCINGPETTOSA2,CROSSWINDATSA2,TRACKWINDPETTOSA2,CEILINGATSA2,VISIBILITYATSA2,PETFLIGHTCASE,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,AIRCRAFT_FIN_NUMBER) values ((SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE),(select date_of_message from LIDO_FSUM_FLIGHTSUMMARYMESSAGE where sno = (SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE)),#[flowVars.Labelfor1stEntryPointofPETarea],#[flowVars.entrypointLongitudePETarea],#[flowVars.entrypointLatitudePETarea],#[flowVars.timeforDeparturetoPETareaEntrypoint],#[flowVars.distanceFromDepartureToPETareaEntrypoint],#[flowVars.remainingfuleBoardAtPETareaEntrypoint],#[flowVars.ICAOcodeofairportPETareaEntrypoint],#[flowVars.IATAcodeofairportPETareantrypoint],#[flowVars.flightTimetoAirportEntryPointPETarea],#[flowVars.FuelinclPETtoSA],#[flowVars.crosswindatSA],#[flowVars.TrackWindPETtoSA],#[flowVars.cellingatSA],#[flowVars.visibilityatSA],#[flowVars.petairportnoICAO],#[flowVars.petairportnoIATA],#[flowVars.flightTimetoAirportEntryPointPETarea2],#[flowVars.FuelinclPETtoSA2],#[flowVars.crosswindatSA2],#[flowVars.TrackWindPETtoSA2],#[flowVars.cellingatSA2],#[flowVars.visibilityatSA2],#[flowVars.PETFlightCase],#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.registrationNo])]]></db:parameterized-query>
+                                    </db:insert>
+                                </foreach>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="patdata1" value="#[payload]" doc:name="Variable"/>
+                            </otherwise>
+                        </choice>
+                        <choice doc:name="Choice">
+                            <when expression="#[flowVars.suitablAirportdata.size()&gt;0]">
+                                <foreach collection="#[flowVars.suitablAirportdata]" doc:name="For Each">
+                                    <expression-component doc:name="Expression"><![CDATA[
+flowVars.suitableAirportIATA=flowVars.suitablAirportdata[flowVars.counter-1].substring(0,5);
+
+flowVars.suitableAirportICAO=flowVars.suitablAirportdata[flowVars.counter-1].substring(5,9);
+
+flowVars.availablefrom=flowVars.suitablAirportdata[flowVars.counter-1].substring(9,15);
+
+flowVars.availableTill=flowVars.suitablAirportdata[flowVars.counter-1].substring(15,21);
+
+flowVars.worstWxCelling=flowVars.suitablAirportdata[flowVars.counter-1].substring(21,26);
+
+flowVars.worstWxVisibility=flowVars.suitablAirportdata[flowVars.counter-1].substring(26,31);
+
+flowVars.fromtoTill=flowVars.suitablAirportdata[flowVars.counter-1].substring(31,40);
+]]></expression-component>
+                                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_FSUM_AIRPORT">
+                                        <db:parameterized-query><![CDATA[insert into LIDO_FSUM_AIRPORT (SNO_FK2,DATE_OF_MESSAGE_FK2,SUITABLEAIRPORTIATA,SUITABLEAIRPORTICAO,AVAILABLEFROM,AVAILABLETILL,WORSTWXCEILING,WORSTWXVISIBILITY,FROM_TILL,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,AIRCRAFT_FIN_NUMBER) values ((SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE),(select date_of_message from LIDO_FSUM_FLIGHTSUMMARYMESSAGE where sno = (SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE)),#[flowVars.suitableAirportIATA],#[flowVars.suitableAirportICAO],#[flowVars.availablefrom],#[flowVars.availableTill],#[flowVars.worstWxCelling],#[flowVars.worstWxVisibility],#[flowVars.fromtoTill],#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.registrationNo])]]></db:parameterized-query>
+                                    </db:insert>
+                                </foreach>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="suitabledata1" value="#[payload]" doc:name="Variable"/>
+                            </otherwise>
+                        </choice>
+                        <choice doc:name="Choice">
+                            <when expression="#[flowVars.adequatedata.size()&gt;0]">
+                                <foreach collection="#[flowVars.adequatedata]" doc:name="For Each">
+                                    <expression-component doc:name="Expression"><![CDATA[flowVars.adequetAirportIATA=flowVars.adequatedata[flowVars.counter-1].substring(0,5);
+flowVars.adequetAirportICAO=flowVars.adequatedata[flowVars.counter-1].substring(5,9);
+]]></expression-component>
+                                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_FSUM_ADEQUATEAIRPORT">
+                                        <db:parameterized-query><![CDATA[insert into LIDO_FSUM_ADEQUATEAIRPORTS (SNO_FK4,date_of_message_fk4,ADEQUATEAIRPORTIATA,ADEQUATEAIRPORTICAO,DEPARTURE_AIRPORT_IATA,DESTINATION_AIRPORT_IATA,AIRCRAFT_FIN_NUMBER) values ((SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE),(select date_of_message from LIDO_FSUM_FLIGHTSUMMARYMESSAGE where sno = (SELECT MAX(sno) from LIDO_FSUM_FLIGHTSUMMARYMESSAGE)),#[flowVars.adequetAirportIATA],#[flowVars.adequetAirportICAO],#[flowVars.departureAirportIATA],#[flowVars.destinationAirportIATA],#[flowVars.registrationNo])]]></db:parameterized-query>
+                                    </db:insert>
+                                </foreach>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="adequedata1" value="#[payload]" doc:name="Variable"/>
+                            </otherwise>
+                        </choice>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <set-variable variableName="ValidationError" value="#[payload.data.data]" doc:name="ValidationErrorRise"/>
+            </otherwise>
+        </choice>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.indata]]></dw:set-payload>
+        </dw:transform-message>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1"  host="localhost" port="2222" path="/FlightSummeryMessage/suceesfiles" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+
+        <exception-strategy ref="Global_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+
+    <flow name="tankeringFlow1">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+
+        <set-attachment attachmentName="attach" value="#[flowVars.errorMessage] in a given file" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="venkat212.eidiko@gmail.com" password="8374945152" connector-ref="Gmail" to="venkat212.eidiko@gmail.com" from="venkat212.eidiko@gmail.com" subject="error" responseTimeout="10000" doc:name="SMTP"/>
+    </flow>
+</mule>
