@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000" archiveDir="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\backup" autoDelete="false" doc:name="SFTP"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="A" channel="ATOB" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <wmq:connector name="WMQ1" hostName="localhost" port="6767" queueManager="D" channel="DTOE" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <sftp:connector name="SFTP1" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <file:connector name="File" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP2" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <spring:beans>
+        <spring:bean id="id" name="id" class="app.Core"/>
+    </spring:beans>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <flow name="abd_inbound_applicationFlow">
+        <sftp:inbound-endpoint connector-ref="SFTP" host="localhost" port="222" path="data/JetIntegration/INPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <set-variable variableName="filename" value="#[message.inboundProperties.originalFilename]" doc:name="filename"/>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="data" value="#[payload]" doc:name="data"/>
+        <set-variable variableName="serverdate" value="#[server.dateTime]" doc:name="serverdate"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-variable variableName="date"><![CDATA[%dw 1.0
+%output application/java
+---
+ flowVars.serverdate as :string {format: "yyyyMMddHHmmss"}]]></dw:set-variable>
+        </dw:transform-message>
+        <set-session-variable variableName="error" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <expression-component doc:name="Expression"><![CDATA[flowVars.data1=flowVars.data.split("\n")[0];
+flowVars.data2=flowVars.data1.split(",");
+if(flowVars.data2.length==8)
+{
+flowVars.data3=["09W","00301","27NOV2016124557","27NOV2016","BOMba","DELll","1","1"];
+for(int i=0;i<data2.length-1;i++)
+{
+ int j=flowVars.data3[i].length()-flowVars.data2[i].length();
+for(int k=1;k<=j;k++){
+
+ if(flowVars.data2[i].matches("^[0-9 ]{3,5}$")){
+
+flowVars.data2[i]=" "+flowVars.data2[i];
+
+}else{
+   flowVars.data2[i]=flowVars.data2[i]+" ";
+}
+
+}
+flowVars.data2[i]=flowVars.data2[i];
+}
+}
+else{  flowVars.action="false";}
+
+
+]]></expression-component>
+        <expression-component doc:name="datevalidation"><![CDATA[import java.util.*; import java.text.*;
+
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+Date d=sdff.parse(flowVars.data2[3]);]]></expression-component>
+        <expression-component doc:name="Expression"><![CDATA[if(flowVars.data2[0].length()=="3")
+{
+flowVars.AirLineDesignator=flowVars.data2[0];
+}else
+{
+ flowVars.flag="true";
+	sessionVars.error.add("AIRLINE DESIGNATOR");
+}
+if(flowVars.data2[1].length()=="5")
+{
+flowVars.Flight_number=flowVars.data2[1];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add(" Flight_number");
+}
+if(flowVars.data2[3].length()=="9")
+{
+flowVars.Date_of_origin=flowVars.data2[3];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add("Date_of_origin");
+}
+if(flowVars.data2[4].length()=="5")
+{
+flowVars.Departure_airport=flowVars.data2[4];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add("DEPARTURE AIRPORT");
+}
+if(flowVars.data2[5].length()=="5")
+{
+flowVars.Destination_airport=flowVars.data2[5];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add("DESTINATION AIRPORT");
+}
+if(flowVars.data2[6].length()=="1")
+{
+flowVars.Operational_Suffix=flowVars.data2[6];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add("OPERATIONAL SUFFIX");
+}
+flowVars.data2[7]=flowVars.data2[7].trim();
+if(flowVars.data2[7].length()=="1")
+{
+flowVars.Duplicate_number=flowVars.data2[7];
+}else
+{
+ flowVars.flag="true";
+sessionVars.error.add("DUPLICATE NUMBER");
+}
+flowVars.Message_Type="ABD";
+flowVars.data2[2]=flowVars.date;
+flowVars.Timestamp_in_GMT=flowVars.data2[2];]]></expression-component>
+
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.error.size()!=0]">
+                <set-variable variableName="error" value="#[flowVars..data.data]" doc:name="Variable"/>
+            </when>
+            <when expression="#[sessionVars.error.size()==0]">
+                <set-variable variableName="formattedmessage" value="#[flowVars.Message_Type.trim()+flowVars.Timestamp_in_GMT.trim()+flowVars.AirLineDesignator.trim()+flowVars.Flight_number.trim()+flowVars.Date_of_origin.trim()+flowVars.Departure_airport.trim()+flowVars.Destination_airport.trim()+flowVars.Operational_Suffix.trim()+flowVars.Duplicate_number.trim()]" doc:name="Variable"/>
+            </when>
+        </choice>
+        <expression-component doc:name="Expression"><![CDATA[flowVars.dt=flowVars.data.split('\n');
+flowVars.a=new java.util.ArrayList();
+String S="";
+for (int i=1;i<flowVars.dt.size();i++)
+{
+
+System.out.print(flowVars.a.indexOf(flowVars.dt[i]));
+if(flowVars.a.indexOf(flowVars.dt[i])==-1)
+{
+flowVars.a.add(flowVars.dt[i]));
+S=S.concat(flowVars.dt[i].replace('##',''));
+}
+else{
+if(flowVars.dt[i].contains('##'))
+{
+flowVars.a.add('####');
+S=S.concat('####')  + "\n";
+}
+else
+{
+flowVars.a.add(flowVars.dt[i]);
+S=S.concat(flowVars.dt[i]);
+}
+}
+}
+
+flowVars.result=S;]]></expression-component>
+
+        <logger message="#[flowVars.formattedmessage +'\n' +&quot;####&quot;+&quot;\n&quot;+ flowVars.result]" level="INFO" doc:name="Logger"/>
+        <set-payload value="#[flowVars.formattedmessage +'\n' +&quot;####&quot;+&quot;\n&quot;+ flowVars.result]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <wmq:outbound-endpoint queue="A.RQ" connector-ref="WMQ" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <wmq:outbound-endpoint queue="D.RQ" connector-ref="WMQ1" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/OUTPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <flow-ref name="abd_inbound_applicationFlow1" doc:name="abd_inbound_applicationFlow1"/>
+
+   <exception-strategy ref="globalexceptionstrategyCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="abd_inbound_applicationFlow1">
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP2" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/BACKUP" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+    </flow>
+    <flow name="abd_inbound_applicationFlow2">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <invoke name="invoke3" object-ref="id" method="getUpdatedPayload" methodArguments="#[message]" methodArgumentTypes="org.mule.el.context.MessageContext" doc:name="Invoke"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="Log Files with attachment cause" cc="naveenpullagura.eidiko@gmail.com" responseTimeout="10000" doc:name="SMTP"/>
+    </flow>
+   
+</mule>
