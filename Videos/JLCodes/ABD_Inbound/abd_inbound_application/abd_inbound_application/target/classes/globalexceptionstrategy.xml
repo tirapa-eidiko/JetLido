@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+    <file:connector name="File1" outputPattern="logfile.txt" writeToDirectory="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" autoDelete="false" streaming="true" validateConnections="true" pollingFrequency="100000" doc:name="File"/>
+    <sftp:connector name="SFTP3" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP4" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+   
+    <catch-exception-strategy name="globalexceptionstrategyCatch_Exception_Strategy">
+            <choice doc:name="Choice">
+            <when expression="#[exception.message.toString().contains('import java.text.*;')]">
+                <set-variable variableName="dateexception" value="#['Time Stamp of  Date of origin of flight is not correct']" doc:name="Variable"/>
+            </when>
+            <when expression="#[exception.message.toString().contains('flowVars..data.data')]">
+                <set-variable variableName="arr" value="#[new java.util.ArrayList()]" doc:name="Variable"/>
+                <foreach collection="#[sessionVars.error]" doc:name="For Each">
+                    <choice doc:name="Choice">
+                        <when expression="#[payload!='null']">
+                            <logger message="#[payload]  is not valid " level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="Expression"><![CDATA[flowVars.arr.add(payload)]]></expression-component>
+                        </when>
+                    </choice>
+                </foreach>
+            </when>
+
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.arr!='' || flowVars.dateexception=='']">
+                <set-payload value="#[flowVars.arr]  is not valid" doc:name="Set Payload"/>
+            </when>
+            <when expression="#[flowVars.arr=='' || flowVars.dateexception!='']">
+                <set-payload value="#[flowVars.dateexception]" doc:name="Set Payload"/>
+            </when>
+            <when expression="#[flowVars.arr!='' &amp;&amp; flowVars.dateexception!='']">
+                <set-payload value="#[flowVars.arr + flowVars.dateexception]" doc:name="Set Payload"/>
+            </when>
+        </choice>
+        <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" connector-ref="File1" responseTimeout="10000" doc:name="File"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP3" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/Logfilefolder" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP4" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/ERROR" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <flow-ref name="abd_inbound_applicationFlow2" doc:name="abd_inbound_applicationFlow2"/>
+   
+    </catch-exception-strategy>
+</mule>

@@ -1,0 +1,603 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="A" channel="ATOB" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <wmq:connector name="WMQ1" hostName="localhost" port="6767" queueManager="D" channel="DTOE" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP1" validateConnections="true" pollingFrequency="100000" duplicateHandling="overwrite" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP2" validateConnections="true" pollingFrequency="100000" archiveDir="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\backup" autoDelete="false" doc:name="SFTP"/>
+    <flow name="domestic_feed_of_indian_airport_notams_inboundFlow">
+        <sftp:inbound-endpoint connector-ref="SFTP2" host="localhost" port="222" path="data/JetIntegration/INPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="data" value="#[payload ]" doc:name="Variable"/>
+        <set-session-variable variableName="exception" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <expression-component doc:name="Expression"><![CDATA[String d=flowVars.data;
+String m=d.replaceFirst("\\(","*(");
+flowVars.data=m + "*";
+flowVars.valid=flowVars.data.split("\\*");
+flowVars.header=flowVars.valid[0];
+flowVars.boody=flowVars.valid[1];
+flowVars.body=flowVars.valid[1].split("\n");
+flowVars.test=flowVars.body[1].split("/");
+
+]]></expression-component>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.test[1][0]=='Q']">
+                <logger message="It is a valid file" level="INFO" doc:name="Logger"/>
+            </when>
+            <when expression="#[flowVars.test[1][0]=='Q']">
+                <expression-component doc:name="Expression"><![CDATA[sessionVars.exception.add("It is not a valid file");]]></expression-component>
+                <set-variable variableName="error" value="#[flowVars...data]" doc:name="Variable"/>
+            </when>
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.body[0].trim()[15]=='N']">
+                <logger message="It is a new file" level="INFO" doc:name="Logger"/>
+                <expression-component doc:name="newplaneqfiled"><![CDATA[if(flowVars.body[0] contains "(")
+{
+flowVars.body[0]=flowVars.body[0].replace("(","");
+}
+String record1=flowVars.body[0];
+flowVars.notamseries=record1.substring(0,1);
+if(notamseries.trim().length()==1 && notamseries.matches("[A-Z]+"))
+{
+flowVars.notamseries=flowVars.notamseries;
+}else
+{
+sessionVars.exception.add("Notam Series is not valid");
+}
+flowVars.notamnumber=record1.substring(1,5);
+	if(flowVars.notamnumber.trim().length()==4 && flowVars.notamnumber.matches("[0-9]+"))
+	{
+		flowVars.notamnumber=flowVars.notamnumber;
+	}
+	else{
+				sessionVars.exception.add("notamnumber is not valid");
+	    }
+flowVars.notamyear=record1.substring(6,8);
+	if(flowVars.notamyear.trim().length()==2 && flowVars.notamyear.matches("[0-9]+"))
+	{
+		flowVars.notamyear=flowVars.notamyear;
+	}
+	else{
+				sessionVars.exception.add("notamyear is not valid");
+	    }
+flowVars.qcode=flowVars.body[1].split('/');
+
+if(flowVars.qcode[0].replace("Q)","").trim().length()=='4')
+{
+	flowVars.fir=flowVars.qcode[0];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid fir");
+}
+if(flowVars.qcode[1].replace("Q","").trim().length()==4)
+{
+	flowVars.qab=flowVars.qcode[1].replace('Q','');
+}
+else
+{
+	sessionVars.exception.add("It is not a valid qab");
+}
+if(flowVars.qcode[2].trim().length()<=2)
+{	
+	if(flowVars.qcode[2].length()==2)
+	{
+	flowVars.tfc=flowVars.qcode[2];
+	}else{
+		flowVars.tfc=flowVars.qcode[2]+ " ";
+		}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid tfc");
+}
+if(flowVars.qcode[3].trim().length()<=3)
+{	
+	if(flowVars.qcode[3].length()==3)
+	{
+	flowVars.purpose=flowVars.qcode[3];
+	}else if(flowVars.qcode[3].length()==2)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ " ";
+	}else if(flowVars.qcode[3].length()==1)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ "  ";
+	}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid purpose");
+}
+if(flowVars.qcode[4].trim().length()==1)
+{
+	 flowVars.scope=flowVars.qcode[4];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid scope");
+}
+if(flowVars.qcode[5].trim().length()==3 && flowVars.qcode[5].matches("[0-9]+"))
+{
+	flowVars.lower=flowVars.qcode[5];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lower");
+}
+if(flowVars.qcode[6].trim().length()==3 && flowVars.qcode[6].matches("[0-9]+"))
+{
+	flowVars.upper=flowVars.qcode[6];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid upper");
+}
+if(flowVars.qcode[7].trim().length()==15  ||  flowVars.qcode[7].matches("[\\s,0-9,A-Za-z]+"))
+{
+	flowVars.lat=flowVars.qcode[7];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lat");
+}]]></expression-component>
+                <expression-component doc:name="newplanetext"><![CDATA[import java.util.regex.Pattern;
+for(int i=2;i<flowVars.body.length;i++)
+{	
+	if(flowVars.body[i].contains("A)") && flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location1=flowVars.body[i];
+		String s=flowVars.location1;
+		Pattern ptn = Pattern.compile("(A\\)|B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		flowVars.location=flowVars.o[1].trim();
+		if(flowVars.o[2].trim().length()== '10' && flowVars.o[2].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[2].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[3].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[3].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location2=flowVars.body[i];
+		String s=flowVars.location2;
+		Pattern ptn = Pattern.compile("(B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		
+		if(flowVars.o[1].trim().length()== '10' && flowVars.o[1].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[1].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[2].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[2].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("E)"))
+{
+	flowVars.text="";
+	for(int j=i;j<flowVars.body.length;j++)
+	{
+			flowVars.text=flowVars.text+flowVars.body[j].replace("E)","");
+	}
+	}
+}
+]]></expression-component>
+            </when>
+            <when expression="#[flowVars.body[0].trim()[15]=='R']">
+                <logger message="It is a replace file" level="INFO" doc:name="Logger"/>
+                 <expression-component doc:name="replacedplaneqfiled"><![CDATA[if(flowVars.body[0] contains "(")
+{
+flowVars.body[0]=flowVars.body[0].replace("(","");
+}
+String record1=flowVars.body[0];
+flowVars.notamseries=record1.substring(0,1);
+if(notamseries.trim().length()==1 && notamseries.matches("[A-Z]+"))
+{
+flowVars.notamseries=flowVars.notamseries;
+}else
+{
+sessionVars.exception.add("Notam Series is not valid");
+}
+flowVars.notamnumber=record1.substring(1,5);
+	if(flowVars.notamnumber.trim().length()==4 && flowVars.notamnumber.matches("[0-9]+"))
+	{
+		flowVars.notamnumber=flowVars.notamnumber;
+	}
+	else{
+				sessionVars.exception.add("notamnumber is not valid");
+	    }
+flowVars.notamyear=record1.substring(6,8);
+	if(flowVars.notamyear.trim().length()==2 && flowVars.notamyear.matches("[0-9]+"))
+	{
+		flowVars.notamyear=flowVars.notamyear;
+	}
+	else{
+				sessionVars.exception.add("notamyear is not valid");
+	    }
+flowVars.qcode=flowVars.body[1].split('/');
+
+if(flowVars.qcode[0].replace("Q)","").trim().length()=='4')
+{
+	flowVars.fir=flowVars.qcode[0];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid fir");
+}
+if(flowVars.qcode[1].replace("Q","").trim().length()==4)
+{
+	flowVars.qab=flowVars.qcode[1].replace('Q','');
+}
+else
+{
+	sessionVars.exception.add("It is not a valid qab");
+}
+if(flowVars.qcode[2].trim().length()<=2)
+{	
+	if(flowVars.qcode[2].length()==2)
+	{
+	flowVars.tfc=flowVars.qcode[2];
+	}else{
+		flowVars.tfc=flowVars.qcode[2]+ " ";
+		}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid tfc");
+}
+if(flowVars.qcode[3].trim().length()<=3)
+{	
+	if(flowVars.qcode[3].length()==3)
+	{
+	flowVars.purpose=flowVars.qcode[3];
+	}else if(flowVars.qcode[3].length()==2)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ " ";
+	}else if(flowVars.qcode[3].length()==1)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ "  ";
+	}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid purpose");
+}
+if(flowVars.qcode[4].trim().length()==1)
+{
+	 flowVars.scope=flowVars.qcode[4];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid scope");
+}
+if(flowVars.qcode[5].trim().length()==3 && flowVars.qcode[5].matches("[0-9]+"))
+{
+	flowVars.lower=flowVars.qcode[5];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lower");
+}
+if(flowVars.qcode[6].trim().length()==3 && flowVars.qcode[6].matches("[0-9]+"))
+{
+	flowVars.upper=flowVars.qcode[6];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid upper");
+}
+if(flowVars.qcode[7].trim().length()==15  ||  flowVars.qcode[7].matches("[\\s,0-9,A-Za-z]+"))
+{
+	flowVars.lat=flowVars.qcode[7];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lat");
+}]]></expression-component>
+                <expression-component doc:name="replacedplanetext"><![CDATA[import java.util.regex.Pattern;
+for(int i=2;i<flowVars.body.length;i++)
+{	
+
+ 	if(flowVars.body[i].contains("A)") && flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location1=flowVars.body[i];
+		String s=flowVars.location1;
+		Pattern ptn = Pattern.compile("(A\\)|B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		flowVars.location=flowVars.o[1].trim();
+		if(flowVars.o[2].trim().length()== '10' && flowVars.o[2].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[2].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[3].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[3].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("A)"))
+	{
+	flowVars.location=flowVars.body[i];
+	}
+	else if(flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location2=flowVars.body[i];
+		String s=flowVars.location2;
+		Pattern ptn = Pattern.compile("(B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		
+		if(flowVars.o[1].trim().length()== '10' && flowVars.o[1].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[1].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[2].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[2].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("E)"))
+{
+	flowVars.text="";
+	for(int j=i;j<flowVars.body.length;j++)
+	{
+			flowVars.text=flowVars.text+flowVars.body[j].replace("E)","");
+	}
+	}
+}
+]]></expression-component>
+            </when>
+            <when expression="#[flowVars.body[0].trim()[15]=='C']">
+                <logger message="It is a cancelled plain" level="INFO" doc:name="Logger"/>
+                <expression-component doc:name="cancelledplaneqfiled"><![CDATA[if(flowVars.body[0] contains "(")
+{
+flowVars.body[0]=flowVars.body[0].replace("(","");
+}
+String record1=flowVars.body[0];
+flowVars.notamseries=record1.substring(0,1);
+if(notamseries.trim().length()==1 && notamseries.matches("[A-Z]+"))
+{
+flowVars.notamseries=flowVars.notamseries;
+}else
+{
+sessionVars.exception.add("Notam Series is not valid");
+}
+flowVars.notamnumber=record1.substring(1,5);
+	if(flowVars.notamnumber.trim().length()==4 && flowVars.notamnumber.matches("[0-9]+"))
+	{
+		flowVars.notamnumber=flowVars.notamnumber;
+	}
+	else{
+				sessionVars.exception.add("notamnumber is not valid");
+	    }
+flowVars.notamyear=record1.substring(6,8);
+	if(flowVars.notamyear.trim().length()==2 && flowVars.notamyear.matches("[0-9]+"))
+	{
+		flowVars.notamyear=flowVars.notamyear;
+	}
+	else{
+				sessionVars.exception.add("notamyear is not valid");
+	    }
+flowVars.qcode=flowVars.body[1].split('/');
+
+if(flowVars.qcode[0].replace("Q)","").trim().length()=='4')
+{
+	flowVars.fir=flowVars.qcode[0];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid fir");
+}
+if(flowVars.qcode[1].replace("Q","").trim().length()==4)
+{
+	flowVars.qab=flowVars.qcode[1].replace('Q','');
+}
+else
+{
+	sessionVars.exception.add("It is not a valid qab");
+}
+if(flowVars.qcode[2].trim().length()<=2)
+{	
+	if(flowVars.qcode[2].length()==2)
+	{
+	flowVars.tfc=flowVars.qcode[2];
+	}else{
+		flowVars.tfc=flowVars.qcode[2]+ " ";
+		}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid tfc");
+}
+if(flowVars.qcode[3].trim().length()<=3)
+{	
+	if(flowVars.qcode[3].length()==3)
+	{
+	flowVars.purpose=flowVars.qcode[3];
+	}else if(flowVars.qcode[3].length()==2)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ " ";
+	}else if(flowVars.qcode[3].length()==1)
+	{
+		flowVars.purpose=flowVars.qcode[3]+ "  ";
+	}
+}
+else
+{
+	sessionVars.exception.add("It is not a valid purpose");
+}
+if(flowVars.qcode[4].trim().length()==1)
+{
+	 flowVars.scope=flowVars.qcode[4];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid scope");
+}
+if(flowVars.qcode[5].trim().length()==3 && flowVars.qcode[5].matches("[0-9]+"))
+{
+	flowVars.lower=flowVars.qcode[5];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lower");
+}
+if(flowVars.qcode[6].trim().length()==3 && flowVars.qcode[6].matches("[0-9]+"))
+{
+	flowVars.upper=flowVars.qcode[6];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid upper");
+}
+if(flowVars.qcode[7].trim().length()==15  ||  flowVars.qcode[7].matches("[\\s,0-9,A-Za-z]+"))
+{
+	flowVars.lat=flowVars.qcode[7];
+}
+else
+{
+	sessionVars.exception.add("It is not a valid lat");
+}]]></expression-component>
+                <expression-component doc:name="cancelledplanetext"><![CDATA[import java.util.regex.Pattern;
+for(int i=2;i<flowVars.body.length;i++)
+{	
+
+ 	if(flowVars.body[i].contains("A)") && flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location1=flowVars.body[i];
+		String s=flowVars.location1;
+		Pattern ptn = Pattern.compile("(A\\)|B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		flowVars.location=flowVars.o[1].trim();
+		if(flowVars.o[2].trim().length()== '10' && flowVars.o[2].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[2].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[3].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[3].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("A)"))
+	{
+	flowVars.location=flowVars.body[i];
+	}
+	else if(flowVars.body[i].contains("B)") && flowVars.body[i].contains("C)"))
+	{
+		flowVars.location2=flowVars.body[i];
+		String s=flowVars.location2;
+		Pattern ptn = Pattern.compile("(B\\)|C\\))");
+        String[] parts = ptn.split(s);
+    	flowVars.o=parts;
+		
+		if(flowVars.o[1].trim().length()== '10' && flowVars.o[1].trim().matches("[0-9]+"))
+{
+		flowVars.validfrom=flowVars.o[1].trim();
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}
+if(flowVars.o[2].trim().matches("[\\s,0-9,A-Z]+"))
+{
+		flowVars.v=flowVars.o[2].trim();
+		String n=flowVars.v;
+		flowVars.validto=n.substring(0,10);
+}else
+{
+sessionVars.exception.add("Valid from is not a valid date");
+}	
+	}
+	else if(flowVars.body[i].contains("E)"))
+{
+	flowVars.text="";
+	for(int j=i;j<flowVars.body.length;j++)
+	{
+			flowVars.text=flowVars.text+flowVars.body[j].replace("E)","");
+	}
+	}
+}
+]]></expression-component>
+            </when>
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.exception.size()==0]">
+                <set-variable variableName="output" value="#[flowVars.header + flowVars.boody]" doc:name="Variable"/>
+            </when>
+            <when expression="#[sessionVars.exception.size()!=0]">
+                <set-variable variableName="dd" value="#[flowVars...data]" doc:name="Variable"/>
+            </when>
+        </choice>
+        <set-payload value="#[flowVars.output + &quot;\n&quot; + &quot;\n&quot; + &quot;\n&quot; + &quot;\n&quot; + &quot;\n&quot; + &quot;\n&quot; + &quot;NNNN&quot;]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <wmq:outbound-endpoint queue="A.RQ" connector-ref="WMQ" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <wmq:outbound-endpoint queue="D.RQ" connector-ref="WMQ1" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="RA#[function:Uuid].inb" host="localhost" port="222" path="data/jetIntegration/OUTPUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/BACKUP" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+  <exception-strategy ref="exceptionstrategyChoice_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+  
+    </flow>
+  
+</mule>

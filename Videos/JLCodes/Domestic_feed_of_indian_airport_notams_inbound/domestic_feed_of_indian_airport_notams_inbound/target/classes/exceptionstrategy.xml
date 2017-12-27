@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <file:connector name="File" outputPattern="logfile.txt" writeToDirectory="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP3" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP4" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <choice-exception-strategy name="exceptionstrategyChoice_Exception_Strategy">
+        <catch-exception-strategy when="#[exception.causedBy(java.net.ConnectException)]" doc:name="Catch Exception Strategy">
+            <set-payload value="#['sftp server is down']" doc:name="Set Payload"/>
+            <set-attachment attachmentName="sftp down exception" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+            <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="SFTP DOWN" cc="naveenpullagura.eidiko@gmail.com" responseTimeout="10000" doc:name="SMTP"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy  doc:name="exceptionCatch_Exception_Strategy">
+        <choice doc:name="Choice">
+            <when expression="#[ exception.message.toString().contains('import java.text.*;')]">
+                <set-variable variableName="dateexception" value="#['TimeStamp ofthe given dates is incorrect']" doc:name="Variable"/>
+            </when>
+            <when expression="#[exception.message.toString().contains('flowVars...data')]">
+                <set-variable variableName="arr" value="#[new java.util.ArrayList()]" doc:name="Variable"/>
+                <foreach collection="#[sessionVars.exception]" doc:name="For Each">
+                    <choice doc:name="Choice">
+                        <when expression="#[payload!='null']">
+                            <expression-component doc:name="Expression"><![CDATA[flowVars.arr.add(payload)]]></expression-component>
+                        </when>
+                    </choice>
+                </foreach>
+            </when>
+        </choice>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.dateexception!=null]">
+                <set-payload value="#[flowVars.dateexception]" doc:name="Set Payload"/>
+            </when>
+            <when expression="#[flowVars.arr.size()!=0]">
+                <set-payload value="#[flowVars.arr]  " doc:name="Set Payload"/>
+            </when>
+        </choice>
+        <set-attachment attachmentName="exception mail" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="DOMESTIC FEED INDIAN AIRPORT NOTAMS  EXCEPTION" responseTimeout="10000" doc:name="SMTP"/>
+            <set-payload value="#[flowVars.arr] " doc:name="Set Payload"/>
+            <scatter-gather doc:name="Scatter-Gather">
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\errorlog" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP3" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/Logfilefolder" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP4" outputPattern="#[header:inbound:originalFilename]" host="localhost" port="222" path="data/JetIntegration/ERROR" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        
+    </catch-exception-strategy>
+       
+    </choice-exception-strategy>
+</mule>
