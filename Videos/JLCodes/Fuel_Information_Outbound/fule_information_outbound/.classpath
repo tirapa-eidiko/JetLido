@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="lib" path="src/main/app/lib/ojdbc6.jar"/>
+	<classpathentry exported="true" kind="con" path="MULE_RUNTIME/org.mule.tooling.server.3.9.0.ee"/>
+	<classpathentry kind="src" path="src/main/app"/>
+	<classpathentry kind="src" path="src/main/api"/>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="src" path="src/main/resources"/>
+	<classpathentry kind="src" output="target/test-classes" path="src/test/java"/>
+	<classpathentry kind="src" path="src/test/munit"/>
+	<classpathentry kind="src" output="target/test-classes" path="src/test/resources"/>
+	<classpathentry kind="src" path="src/main/wsdl"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/CL3Export.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/CL3Nonexport.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.axis2.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.commonservices.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.defaultconfig.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.headers.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.jmqi.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.jms.Nojndi.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.pcf.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.postcard.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.soap.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mq.tools.ras.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/com.ibm.mqjms.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/connector.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/dhbcore.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/fscontext.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/jms.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/jndi.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/jta.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/ldap.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/providerutil.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/ibm/WebSphere MQ/java/lib/rmm.jar"/>
+	<classpathentry kind="output" path="target/classes"/>
+</classpath>

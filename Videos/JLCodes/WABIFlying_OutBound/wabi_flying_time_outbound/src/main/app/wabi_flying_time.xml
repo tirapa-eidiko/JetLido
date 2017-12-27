@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq"
+	xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+<file:connector name="File" outputPattern="fuelinformation.rcv1" writeToDirectory="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\lidooutput" autoDelete="false" streaming="true" validateConnections="true" pollingFrequency="100000" doc:name="File"/>
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="system" password="sarasu10" doc:name="Oracle Configuration"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="8888" queueManager="B" channel="ATOB" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <flow name="fule_information_outboundFlow">
+        <wmq:inbound-endpoint queue="B.LQ" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="data" value="#[payload]" doc:name="Variable"/>
+        <set-session-variable variableName="exception" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <expression-component doc:name="length"><![CDATA[if(flowVars.data.length()==296)
+{
+System.out.println("valid data");
+}else
+{
+	sessionVars.exception.add('Input file contains mismatch length with the given requirements');
+}]]></expression-component>
+        <expression-component doc:name="valuesassign"><![CDATA[String S=flowVars.data;
+flowVars.Info_type=S.substring(0,4);
+flowVars.AirLineDesignator=S.substring(4,7);
+flowVars.flightNumber=S.substring(7,12);
+flowVars.OperationalSuffix=S.substring(12,13);
+flowVars.dateoforiginutc=S.substring(13,22);
+flowVars.dateoforiginlocal=S.substring(22,31);
+flowVars.dateofoperationutc=S.substring(31,40);
+flowVars.dateofoperationlocal=S.substring(40,49);
+flowVars.departureofairportiata=S.substring(49,54);
+flowVars.destinationairportiata=S.substring(54,59);
+flowVars.masteroffice=S.substring(59,62);
+flowVars.responsibleoffice1=S.substring(62,65);
+flowVars.flightduplicationnumber2=S.substring(65,67);
+flowVars.BriefingSequenceNo3=S.substring(67,69);
+flowVars.TransmissionNo4=S.substring(69,71);
+flowVars.AircraftoperatorIATA=S.substring(71,74);
+flowVars.Separator1=S.substring(74,77);
+flowVars.Unitofmeasure=S.substring(77,78);
+flowVars.Fuelorderstatus=S.substring(78,80);
+flowVars.PlannedTaxifuel=S.substring(80,84);
+flowVars.PlannedTripfuel=S.substring(84,90);
+flowVars.Blockfuel=S.substring(90,96);
+flowVars.PlannedTripTime =S.substring(96,100);
+flowVars.PlannedTaxiTime  =S.substring(100,104);
+flowVars.EstimTotalFlightTime=S.substring(104,108);
+flowVars.TankCapacity=S.substring(108,114);
+flowVars.ACRegistration=S.substring(114,123);
+flowVars.ReclearanceIndicator=S.substring(123,124);
+flowVars.MaxLandingWeight =S.substring(124,130);
+flowVars.MaxTakeoffWeight=S.substring(130,136);
+flowVars.MaxTaxiWeightalwaysasmaintainedforacft=S.substring(136,142);
+flowVars.PlannedZFW=S.substring(142,148);
+flowVars.MaxZFW=S.substring(148,154);
+flowVars.SupplierGravity=S.substring(154,160);
+flowVars.RemainingGravity=S.substring(160,166);
+flowVars.DispatcherRemark=S.substring(166,246);
+flowVars.FuelTruckIndicator5=S.substring(246,247);
+flowVars.FuelTruckStandby5=S.substring(247,248);
+flowVars.RefuelingQuantity5=S.substring(248,254);
+flowVars.WABRevisionNumber6=S.substring(254,256);
+flowVars.OFPNumber6=S.substring(256,258);
+flowVars.PlannedLoad6=S.substring(258,264);
+flowVars.NegativeDeltaZFW6=S.substring(264,270);
+flowVars.PositiveDeltaZFW6=S.substring(270,276);
+flowVars.Separator2=S.substring(276,280);
+flowVars.ReducedLandingWeight78=S.substring(280,288);
+flowVars.ReducedTakeoffWeight79=S.substring(288,296);
+
+
+]]></expression-component>
+
+        <expression-component doc:name="Expression"><![CDATA[if(flowVars.Info_type=="WABI")
+{
+	flowVars.Info_type=flowVars.Info_type;
+}else
+{
+	sessionVars.exception.add('Info_type');
+}
+if(flowVars.AirLineDesignator.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.AirLineDesignator=flowVars.AirLineDesignator;
+}
+else
+{
+	sessionVars.exception.add('AirLineDesignator');
+}
+if(flowVars.flightNumber.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.flightNumber=flowVars.flightNumber;
+}
+else
+{
+	sessionVars.exception.add('flightNumber');
+}
+if(flowVars.OperationalSuffix.matches("[a-zA-Z\\s]+"))
+{
+flowVars.OperationalSuffix=flowVars.OperationalSuffix;
+}
+else
+{
+	sessionVars.exception.add('OperationalSuffix');
+}
+if(flowVars.dateoforiginutc.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.dateoforiginutc=flowVars.dateoforiginutc;
+}
+else
+{
+	sessionVars.exception.add('dateoforiginutc');
+}
+if(flowVars.dateoforiginlocal.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.dateoforiginlocal=flowVars.dateoforiginlocal;
+}
+else
+{
+	sessionVars.exception.add('dateoforiginlocal');
+}
+if(flowVars.dateofoperationutc.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.dateofoperationutc=flowVars.dateofoperationutc;
+}
+else
+{
+	sessionVars.exception.add('dateofoperationutc');
+}
+if(flowVars.dateofoperationlocal.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.dateofoperationlocal=flowVars.dateofoperationlocal;
+}
+else
+{
+	sessionVars.exception.add('dateofoperationlocal');
+}
+if(flowVars.departureofairportiata.matches("[a-zA-Z\\s]+"))
+{
+flowVars.departureofairportiata=flowVars.departureofairportiata;
+}
+else
+{
+	sessionVars.exception.add('departureofairportiata');
+}
+if(flowVars.destinationairportiata.matches("[a-zA-Z\\s]+"))
+{
+flowVars.destinationairportiata=flowVars.destinationairportiata;
+}
+else
+{
+	sessionVars.exception.add('destinationairportiata');
+}
+if(flowVars.masteroffice.matches("[a-zA-Z\\s]+"))
+{
+flowVars.masteroffice=flowVars.masteroffice;
+}
+else
+{
+	sessionVars.exception.add('masteroffice');
+}
+if(flowVars.responsibleoffice1.matches("[a-zA-Z\\s]+"))
+{
+flowVars.responsibleoffice1=flowVars.responsibleoffice1;
+}
+else
+{
+	sessionVars.exception.add('responsibleoffice1');
+}
+if(flowVars.flightduplicationnumber2.matches("[0-9\\s]+"))
+{
+flowVars.flightduplicationnumber2=flowVars.flightduplicationnumber2;
+}
+else
+{
+	sessionVars.exception.add('flightduplicationnumber2');
+}
+if(flowVars.BriefingSequenceNo3.matches("[0-9\\s]+"))
+{
+flowVars.BriefingSequenceNo3=flowVars.BriefingSequenceNo3;
+}
+else
+{
+	sessionVars.exception.add('BriefingSequenceNo3');
+}
+if(flowVars.TransmissionNo4.matches("[0-9\\s]+"))
+{
+flowVars.TransmissionNo4=flowVars.TransmissionNo4;
+}
+else
+{
+	sessionVars.exception.add('TransmissionNo4');
+}
+if(flowVars.AircraftoperatorIATA.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.AircraftoperatorIATA=flowVars.AircraftoperatorIATA;
+}
+else
+{
+	sessionVars.exception.add('AircraftoperatorIATA');
+}
+if(flowVars.Separator1.matches("[a-zA-Z\\s]+"))
+{
+flowVars.Separator1=flowVars.Separator1;
+}
+else
+{
+	sessionVars.exception.add('Separator1');
+}
+if(flowVars.Unitofmeasure.matches("[a-zA-Z\\s]+"))
+{
+flowVars.Unitofmeasure=flowVars.Unitofmeasure;
+}
+else
+{
+	sessionVars.exception.add('Unitofmeasure');
+}
+if(flowVars.Fuelorderstatus.matches("[0-9\\s]+"))
+{
+flowVars.Fuelorderstatus=flowVars.Fuelorderstatus;
+}
+else
+{
+	sessionVars.exception.add('Fuelorderstatus');
+}
+if(flowVars.PlannedTaxifuel.matches("[0-9\\s]+"))
+{
+flowVars.PlannedTaxifuel=flowVars.PlannedTaxifuel;
+}
+else
+{
+	sessionVars.exception.add('PlannedTaxifuel');
+}
+if(flowVars.PlannedTripfuel.matches("[0-9\\s]+"))
+{
+flowVars.PlannedTripfuel=flowVars.PlannedTripfuel;
+}
+else
+{
+	sessionVars.exception.add('PlannedTripfuel');
+}
+if(flowVars.Blockfuel.matches("[0-9\\s]+"))
+{
+flowVars.Blockfuel=flowVars.Blockfuel;
+}
+else
+{
+	sessionVars.exception.add('Blockfuel');
+}
+if(flowVars.PlannedTripTime.matches("[0-9\\s]+"))
+{
+flowVars.PlannedTripTime=flowVars.PlannedTripTime;
+}
+else
+{
+	sessionVars.exception.add('PlannedTripTime');
+}
+if(flowVars.PlannedTaxiTime.matches("[0-9\\s]+"))
+{
+flowVars.PlannedTaxiTime=flowVars.PlannedTaxiTime;
+}
+else
+{
+	sessionVars.exception.add('PlannedTaxiTime');
+}
+if(flowVars.EstimTotalFlightTime.matches("[0-9\\s]+"))
+{
+flowVars.EstimTotalFlightTime=flowVars.EstimTotalFlightTime;
+}
+else
+{
+	sessionVars.exception.add('EstimTotalFlightTime');
+}
+if(flowVars.TankCapacity.matches("[0-9\\s]+"))
+{
+flowVars.TankCapacity=flowVars.TankCapacity;
+}
+else
+{
+	sessionVars.exception.add('TankCapacity');
+}
+if(flowVars.ACRegistration.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.ACRegistration=flowVars.ACRegistration;
+}
+else
+{
+	sessionVars.exception.add('ACRegistration');
+}
+if(flowVars.ReclearanceIndicator.matches("[a-zA-Z\\s]+"))
+{
+flowVars.ReclearanceIndicator=flowVars.ReclearanceIndicator;
+}
+else
+{
+	sessionVars.exception.add('ReclearanceIndicator');
+}
+if(flowVars.MaxLandingWeight.matches("[0-9\\s]+"))
+{
+flowVars.MaxLandingWeight=flowVars.MaxLandingWeight;
+}
+else
+{
+	sessionVars.exception.add('MaxLandingWeight');
+}
+if(flowVars.MaxTakeoffWeight.matches("[0-9\\s]+"))
+{
+flowVars.MaxTakeoffWeight=flowVars.MaxTakeoffWeight;
+}
+else
+{
+	sessionVars.exception.add('MaxTakeoffWeight');
+}
+if(flowVars.MaxTaxiWeightalwaysasmaintainedforacft.matches("[0-9\\s]+"))
+{
+flowVars.MaxTaxiWeightalwaysasmaintainedforacft=flowVars.MaxTaxiWeightalwaysasmaintainedforacft;
+}
+else
+{
+	sessionVars.exception.add('MaxTaxiWeightalwaysasmaintainedforacft');
+}
+if(flowVars.PlannedZFW.matches("[0-9\\s]+"))
+{
+flowVars.PlannedZFW=flowVars.PlannedZFW;
+}
+else
+{
+	sessionVars.exception.add('PlannedZFW');
+}
+if(flowVars.MaxZFW.matches("[0-9\\s]+"))
+{
+flowVars.MaxZFW=flowVars.MaxZFW;
+}
+else
+{
+	sessionVars.exception.add('MaxZFW');
+}
+if(flowVars.SupplierGravity.matches("[0-9\\s.]+"))
+{
+flowVars.SupplierGravity=flowVars.SupplierGravity;
+}
+else
+{
+	sessionVars.exception.add('SupplierGravity');
+}
+if(flowVars.RemainingGravity.matches("[0-9\\s]+"))
+{
+flowVars.RemainingGravity=flowVars.RemainingGravity;
+}
+else
+{
+	sessionVars.exception.add('RemainingGravity');
+}
+if(flowVars.DispatcherRemark.matches("[a-zA-Z0-9\\s]+"))
+{
+flowVars.DispatcherRemark=flowVars.DispatcherRemark;
+}
+else
+{
+	sessionVars.exception.add('DispatcherRemark');
+}
+if(flowVars.FuelTruckIndicator5.matches("[a-zA-Z\\s]+"))
+{
+flowVars.FuelTruckIndicator5=flowVars.FuelTruckIndicator5;
+}
+else
+{
+	sessionVars.exception.add('FuelTruckIndicator5');
+}
+if(flowVars.FuelTruckStandby5.matches("[a-zA-Z\\s]+"))
+{
+flowVars.FuelTruckStandby5=flowVars.FuelTruckStandby5;
+}
+else
+{
+	sessionVars.exception.add('FuelTruckStandby5');
+}
+if(flowVars.RefuelingQuantity5.matches("[0-9\\s]+"))
+{
+flowVars.RefuelingQuantity5=flowVars.RefuelingQuantity5;
+}
+else
+{
+	sessionVars.exception.add('RefuelingQuantity5');
+}
+if(flowVars.WABRevisionNumber6.matches("[0-9\\s]+"))
+{
+flowVars.WABRevisionNumber6=flowVars.WABRevisionNumber6;
+}
+else
+{
+	sessionVars.exception.add('WABRevisionNumber6');
+}
+if(flowVars.OFPNumber6.matches("[0-9\\s]+"))
+{
+flowVars.OFPNumber6=flowVars.OFPNumber6;
+}
+else
+{
+	sessionVars.exception.add('OFPNumber6');
+}
+if(flowVars.PlannedLoad6.matches("[0-9\\s]+"))
+{
+flowVars.PlannedLoad6=flowVars.PlannedLoad6;
+}
+else
+{
+	sessionVars.exception.add('PlannedLoad6');
+}
+if(flowVars.NegativeDeltaZFW6.matches("[0-9\\s]+"))
+{
+flowVars.NegativeDeltaZFW6=flowVars.NegativeDeltaZFW6;
+}
+else
+{
+	sessionVars.exception.add('NegativeDeltaZFW6');
+}
+if(flowVars.PositiveDeltaZFW6.matches("[0-9\\s]+"))
+{
+flowVars.PositiveDeltaZFW6=flowVars.PositiveDeltaZFW6;
+}
+else
+{
+	sessionVars.exception.add('PositiveDeltaZFW6');
+}
+if(flowVars.Separator2.matches("[a-zA-Z\\s]+"))
+{
+flowVars.Separator2=flowVars.Separator2;
+}
+else
+{
+	sessionVars.exception.add('Separator2');
+}
+if(flowVars.ReducedLandingWeight78.matches("[0-9\\s]+"))
+{
+flowVars.ReducedLandingWeight78=flowVars.ReducedLandingWeight78;
+}
+else
+{
+	sessionVars.exception.add('ReducedLandingWeight78');
+}
+if(flowVars.ReducedTakeoffWeight79.matches("[0-9\\s]+"))
+{
+flowVars.ReducedTakeoffWeight79=flowVars.ReducedTakeoffWeight79;
+}
+else
+{
+	sessionVars.exception.add('ReducedTakeoffWeight79');
+}]]></expression-component>
+        <expression-component doc:name="date"><![CDATA[import java.util.*;
+import java.text.*;
+
+    SimpleDateFormat sdf = new SimpleDateFormat("ddMMMyyyy");
+	sdf.setLenient(false);
+   Date  date = sdf.parse(flowVars.dateoforiginutc);
+  Date  date1 = sdf.parse(flowVars.dateoforiginlocal);
+  Date  date2 = sdf.parse(flowVars.dateofoperationutc);
+  Date  date3 = sdf.parse(flowVars.dateofoperationlocal);]]></expression-component>
+
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.exception.size()!=0]">
+                <set-variable variableName="outputexception" value="#[flowVars...data]" doc:name="Variable"/>
+            </when>
+            <when expression="#[sessionVars.exception.size()==0]">
+                <set-variable variableName="output" value="#[flowVars.data]" doc:name="Variable"/>
+            </when>
+        </choice>
+        <logger message="#[flowVars.output]" level="INFO" doc:name="Logger"/>
+        <set-payload value="#[flowVars.output]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[function:Uuid].rcv1" host="localhost" port="222" path="data/LidoIntegration/nonVTFiles" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\lidooutput" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <processor-chain>
+                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                    <db:parameterized-query><![CDATA[insert into wabiflyingtime values(#[flowVars.Info_type],#[flowVars.AirLineDesignator],#[flowVars.flightNumber],#[flowVars.OperationalSuffix],#[flowVars.dateoforiginutc],#[flowVars.dateoforiginlocal],#[flowVars.dateofoperationutc],#[flowVars.dateofoperationlocal],#[flowVars.departureofairportiata],#[flowVars.destinationairportiata],#[flowVars.masteroffice],#[flowVars.responsibleoffice1],#[flowVars.flightduplicationnumber2],#[flowVars.BriefingSequenceNo3],#[flowVars.TransmissionNo4],#[flowVars.AircraftoperatorIATA4],#[flowVars.Separator1],#[flowVars.Unitofmeasure],#[flowVars.Fuelorderstatus],#[flowVars.PlannedTaxifuel],#[flowVars.PlannedTripfuel],#[flowVars.Blockfuel],#[flowVars.PlannedTripTime ],#[flowVars.PlannedTaxiTime  ],#[flowVars.EstimTotalFlightTime],#[flowVars.TankCapacity],#[flowVars.ACRegistration],#[flowVars.ReclearanceIndicator],#[flowVars.MaxLandingWeight ],#[flowVars.MaxTakeoffWeight],#[flowVars.MaxTaxiWeightalwaysasmaintainedforacft],#[flowVars.PlannedZFW],#[flowVars.MaxZFW],#[flowVars.SupplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTruckIndicator5],#[flowVars.FuelTruckStandby5],#[flowVars.RefuelingQuantity5],#[flowVars.WABRevisionNumber6],#[flowVars.OFPNumber6],#[flowVars.PlannedLoad6],#[flowVars.NegativeDeltaZFW6],#[flowVars.PositiveDeltaZFW6],#[flowVars.Separator2],#[flowVars.ReducedLandingWeight78],#[flowVars.ReducedTakeoffWeight79])]]></db:parameterized-query>
+                </db:insert>
+                <logger message="Data Inserted successfully" level="INFO" doc:name="Logger"/>
+            </processor-chain>
+        </scatter-gather>
+     <exception-strategy ref="exceptionCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+     
+    </flow>
+
+</mule>
