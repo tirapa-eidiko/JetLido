@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+    <wmq:connector name="WMQ" hostName="localhost" port="7777" queueManager="BB" channel="AATOBB" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="XE" user="system" password="sarasu10" doc:name="Oracle Configuration" transactionIsolation="SERIALIZABLE" useXaTransactions="true"/>
+    <smtp:gmail-connector name="Gmail1" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <sftp:connector name="SFTP" validateConnections="true" archiveDir="#[flowVars.originalfile]" autoDelete="false" doc:name="SFTP">
+        <reconnect/>
+    </sftp:connector>
+    <flow name="ovclFlow">
+        <wmq:inbound-endpoint queue="BB.LQ" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+
+        <set-variable variableName="array" value="#[new java.util.ArrayList()]" doc:name="Variable"/>
+        <set-session-variable variableName="errorDetails" value="#[new java.util.ArrayList()]" doc:name="Session Variable"/>
+        <expression-component doc:name="Ovcl Validation"><![CDATA[
+
+if(flowVars.data.substring(0,4).trim()=="OVCL"){
+flowVars.Infotype=flowVars.data.substring(0,4);
+}else{
+sessionVars.errorDetails.add("InfoType  value wrong");
+}
+if(flowVars.data.substring(4,14).matches("^[A-Za-z0-9#&@ ]{10}$")&&flowVars.data.substring(4,14).trim()!=""){
+flowVars.RouteName=flowVars.data.substring(4,14);
+}else{
+sessionVars.errorDetails.add("RouteName  value wrong");
+}
+if(flowVars.data.substring(14,17).matches("^[A-Za-z ]{3}$")){
+flowVars.RouteType=flowVars.data.substring(14,17);
+}else{
+sessionVars.errorDetails.add("RouteType  value wrong");
+}
+if(flowVars.data.substring(17,18).matches("^[B|D|A|M| ]{1}$")){
+flowVars.Trigger=flowVars.data.substring(17,18);
+}else{
+sessionVars.errorDetails.add("Trigger  value wrong");
+}
+if(flowVars.data.substring(18,19).matches("^[A|R| ]{1}$")){
+flowVars.PredefinedRouteStatus=flowVars.data.substring(18,19);
+}else{
+sessionVars.errorDetails.add("PredefinedRouteStatus value wrong");
+}
+if(flowVars.data.substring(19,24).matches("^[0-9 ]{5}$")){
+flowVars.PredCounter=flowVars.data.substring(19,24);
+}else{
+sessionVars.errorDetails.add("PredCounter value wrong");
+}
+if(flowVars.data.substring(24,29).matches("^[0-9 ]{5}$")){
+flowVars.TotalNoofPreds=flowVars.data.substring(24,29);
+}else{
+sessionVars.errorDetails.add("TotalNoofPreds value wrong");
+}
+if(flowVars.data.substring(29,30).matches("^[A|C|N|P]{1}$")){
+flowVars.PredefinedRoutePurpose=flowVars.data.substring(29,30);
+}else{
+sessionVars.errorDetails.add("PredefinedRoutePurpose value wrong");
+}
+if(flowVars.data.substring(30,35).matches("^[0-9 ]{5}$")){
+flowVars.RouteLength=flowVars.data.substring(30,35);
+}else{
+sessionVars.errorDetails.add("RouteLength value wrong");
+}
+if(flowVars.data.substring(35,40).matches("^[A-Za-z ]{5}$")){
+flowVars.FromWaypoint=flowVars.data.substring(35,40);
+}else{
+sessionVars.errorDetails.add("FromWaypoint value wrong");
+}
+if(flowVars.data.substring(40,45).matches("^[A-Za-z ]{5}$")){
+flowVars.ToWaypoint=flowVars.data.substring(40,45);
+}else{
+sessionVars.errorDetails.add("ToWaypoint value wrong");
+}
+if(flowVars.data.substring(45,48).matches("^[0-9 ]{3}$")){
+flowVars.NoofCountries=flowVars.data.substring(45,48);
+}else{
+sessionVars.errorDetails.add("NoofCountries value wrong");
+}
+if(flowVars.data.substring(48,57).matches("^[A-Za-z0-9]{9}$")){
+flowVars.EffectiveFrom=flowVars.data.substring(48,57);
+}else{
+sessionVars.errorDetails.add("EffectiveFrom value wrong");
+}
+if(flowVars.data.substring(57,66).matches("^[A-Za-z0-9]{9}$")){
+flowVars.EffectiveTill=flowVars.data.substring(57,66);
+}else{
+sessionVars.errorDetails.add("EffectiveTill value wrong");
+}
+
+
+
+
+
+]]></expression-component>
+
+        <choice doc:name="Choice" tracking:enable-default-events="true">
+            <when expression="#[flowVars.data.substring(17,18).matches(&quot;^[B|D]{1}$&quot;)]">
+                <expression-component doc:name="shortFormateFiles"><![CDATA[
+flowVars.data1=flowVars.data.substring(66);
+flowVars.c = flowVars.data.substring(66).lastIndexOf("                    ");
+flowVars.d =flowVars.c+20;
+flowVars.data2=flowVars.data1.substring(0,flowVars.d);
+
+flowVars.loopVar=(flowVars.data2.length()/100).toString().trim();
+flowVars.reminder=flowVars.data2.length()%100;
+
+
+flowVars.var=flowVars.loopVar.trim().indexOf(".",0);
+flowVars.varA=flowVars.loopVar.substring(0,flowVars.var);
+flowVars.VarB=Integer.parseInt(flowVars.varA);
+
+if(flowVars.reminder>0){
+flowVars.varB=flowVars.varB+1;
+}else{
+flowVars.varB=flowVars.varB;
+}
+flowVars.varC=0;
+for(int i=1;i<=flowVars.varB;i++){
+flowVars.data3=flowVars.data2.substring(flowVars.varC,flowVars.varC+100);
+flowVars.array.add(flowVars.data3);
+flowVars.VarC=flowVars.VarC+100;
+
+}
+]]></expression-component>
+                <foreach collection="#[flowVars.array]" doc:name="For Each">
+                    <choice doc:name="Choice">
+                        <when expression="#[flowVars.array[counter-1].length()==100]">
+                            <expression-component doc:name="Expression"><![CDATA[
+
+if(flowVars.array[counter-1].substring(0,2).matches("^[A-Za-z0-9]{2}$")){
+flowVars.CountryCode=flowVars.array[counter-1].substring(0,2);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"CountryCode value wrong  ");
+}
+if(flowVars.array[counter-1].substring(2,7).matches("^[A-Za-z ]{5}$")){
+flowVars.EntryWaypoint=flowVars.array[counter-1].substring(2,7);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint l value wrong  ");
+}
+if(flowVars.array[counter-1].substring(7,14).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.EntryWaypointLattitude=flowVars.array[counter-1].substring(7,14);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint latitude value wrong  ");
+}
+if(flowVars.array[counter-1].substring(14,22).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.EntryWaypointLangitude=flowVars.array[counter-1].substring(14,22);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint langitude value wrong  ");
+}
+if(flowVars.array[counter-1].substring(22,29).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.ToEntryWaypoint=flowVars.array[counter-1].substring(22,29);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"ToEntry waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(29,36).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.FromEntryWaypoint=flowVars.array[counter-1].substring(29,36);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"FromEntry waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(36,41).matches("^[0-9 ]{5}$")){
+flowVars.distanceFromDepartureAirport=flowVars.array[counter-1].substring(36,41);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" distanceFromDepartureAirport  value wrong  ");
+}
+
+if(flowVars.array[counter-1].substring(41,46).matches("^[A-Za-z ]{5}$")){
+flowVars.ExitWaypointCode=flowVars.array[counter-1].substring(41,46);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"ExitWaypointCode  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(46,53).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.ExitWaypointLattitude=flowVars.array[counter-1].substring(46,53);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint latitude value wrong  ");
+}
+if(flowVars.array[counter-1].substring(53,61).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.ExitWaypointLangitude=flowVars.array[counter-1].substring(53,61);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint langitude value wrong  ");
+}
+
+if(flowVars.array[counter-1].substring(61,68).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.ToExitWaypoint=flowVars.array[counter-1].substring(61,68);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"ToExit waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(68,75).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.FromExitWaypoint=flowVars.array[counter-1].substring(68,75);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"FromExit waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(75,80).matches("^[0-9 ]{5}$")){
+flowVars.distanceFromExitDepartureAirport=flowVars.array[counter-1].substring(75,80);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" distanceFromExitDepartureAirport  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(80,100).trim()==""){
+flowVars.Seperator=flowVars.array[counter-1].substring(80,100);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Seperator  value wrong  ");
+}
+
+
+
+
+
+
+]]></expression-component>
+                        </when>
+                        <otherwise>
+                            <set-variable variableName="error" value="#[payload.data.data]" doc:name="Error in data"/>
+                        </otherwise>
+                    </choice>
+                </foreach>
+            </when>
+            <when expression="#[flowVars.data.substring(17,18).matches(&quot;^[A|M]{1}$&quot;)]">
+                <expression-component doc:name="LongFormate"><![CDATA[
+flowVars.data1=flowVars.data.substring(66);
+flowVars.c = flowVars.data.substring(66).lastIndexOf("                    ");
+flowVars.d =flowVars.c+20;
+flowVars.data2=flowVars.data1.substring(0,flowVars.d);
+
+flowVars.loopVar=(flowVars.data2.length()/61).toString().trim();
+flowVars.reminder=flowVars.data2.length()%61;
+
+
+flowVars.var=flowVars.loopVar.trim().indexOf(".",0);
+flowVars.varA=flowVars.loopVar.substring(0,flowVars.var);
+flowVars.VarB=Integer.parseInt(flowVars.varA);
+
+if(flowVars.reminder>0){
+flowVars.varB=flowVars.varB+1;
+}else{
+flowVars.varB=flowVars.varB;
+}
+flowVars.varC=0;
+for(int i=1;i<=flowVars.varB;i++){
+if(flowVars.data2.substring(flowVars.varC).length()>=61){
+flowVars.data3=flowVars.data2.substring(flowVars.varC,flowVars.varC+61);
+flowVars.array.add(flowVars.data3);
+flowVars.VarC=flowVars.VarC+61;
+}else{flowVars.array.add(flowVars.data2.substring(flowVars.varC));}
+}
+]]></expression-component>
+                <foreach doc:name="For Each" collection="#[flowVars.array]">
+                    <choice doc:name="Choice">
+                        <when expression="#[flowVars.array[counter-1].length()==61]">
+                            <expression-component doc:name="Expression"><![CDATA[
+if(flowVars.array[counter-1].substring(0,2).matches("^[A-Za-z0-9]{2}$")){
+flowVars.CountryCode=flowVars.array[counter-1].substring(0,2);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"CountryCode value wrong  ");
+}
+if(flowVars.array[counter-1].substring(2,7).matches("^[A-Za-z ]{5}$")){
+flowVars.EntryWaypoint=flowVars.array[counter-1].substring(2,7);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint l value wrong  ");
+}
+if(flowVars.array[counter-1].substring(7,14).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.EntryWaypointLattitude=flowVars.array[counter-1].substring(7,14);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint latitude value wrong  ");
+}
+if(flowVars.array[counter-1].substring(14,22).matches("^[A-Za-z0-9 ]{8}$")){
+flowVars.EntryWaypointLangitude=flowVars.array[counter-1].substring(14,22);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"Entry waypoint langitude value wrong  ");
+}
+if(flowVars.array[counter-1].substring(22,29).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.ToEntryWaypoint=flowVars.array[counter-1].substring(22,29);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"ToEntry waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(29,36).matches("^[A-Za-z0-9 ]{7}$")){
+flowVars.FromEntryWaypoint=flowVars.array[counter-1].substring(29,36);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+"FromEntry waypoint  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(36,41).matches("^[0-9 ]{5}$")){
+flowVars.distanceFromDepartureAirport=flowVars.array[counter-1].substring(36,41);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" distanceFromDepartureAirport  value wrong  ");
+}
+if(flowVars.array[counter-1].substring(41,61).trim()==""){
+flowVars.Seperator=flowVars.array[counter-1].substring(41,61);
+}else{
+sessionVars.errorDetails.add(flowVars.counter+" Seperator  value wrong  ");
+}
+
+
+
+]]></expression-component>
+                        </when>
+                        <otherwise>
+                            <set-variable variableName="error" value="#[payload.data.data]" doc:name="ErrorRise"/>
+
+                        </otherwise>
+                    </choice>
+                </foreach>
+            </when>
+            <otherwise>
+                <set-variable variableName="errorrise" value="#[payload.data.data]" doc:name="ErrorRise"/>
+            </otherwise>
+        </choice>
+        <expression-component doc:name="DateValidation"><![CDATA[import java.util.*;import java.text.*;
+
+
+
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+
+Date date = sdff.parse(flowVars.EffectiveFrom);
+Date date1 = sdff.parse(flowVars.EffectiveTill);
+
+
+]]></expression-component>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.errorDetails.size()==0]">
+                <expression-component doc:name="Expression"><![CDATA[flowVars.data4=flowVars.data2.substring(flowVars.d);
+if(flowVars.data4.contains("#")){
+flowVars.routeString=flowVars.data4.substring(0,flowVars.data4.indexOf("#",0));
+
+}else{
+flowVars.routeString=flowVars.data4;
+}]]></expression-component>
+            </when>
+            <otherwise>
+                <set-variable variableName="errorValidation" value="#[payload.data.validateeError]" doc:name="Error In validation"/>
+            </otherwise>
+        </choice>
+
+
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.data.substring(17,18).matches(&quot;^[B|D]{1}$&quot;)]">
+                <db:insert config-ref="Oracle_Configuration" doc:name="ROUTEOVCL TAB">
+                    <db:parameterized-query><![CDATA[insert into LIDO_ROUTEOVCL (SERIESID,INFO_TYPE,ROUTE_NAME,ROUTE_TYPE,TRIGGER_VALUE,PREDEFINED_ROUTE_STATUS,PRED_COUNTER,TOTAL_NUMBER_OF_PRIEDS,PREDEFINED_ROUTE_PURPOSE,ROUTE_LENGTH,FROM_WAYPOINT,TO_WAYPOINT,NUMBER_OF_COUNTRIES,EFFECTIVE_FROM,EFFECTIVE_TILL,ROUTE_STRING) values (LIDO_OVCL_SEQ.nextval,#[flowVars.Infotype],#[flowVars.RouteName],#[flowVars.RouteType],#[flowVars.Trigger],#[flowVars.PredefinedRouteStatus],#[flowVars.PredCounter],#[flowVars.TotalNoofPreds],#[flowVars.PredefinedRoutePurpose],#[flowVars.RouteLength],#[flowVars.FromWaypoint],#[flowVars.ToWaypoint],#[flowVars.NoofCountries],to_date(#[flowVars.EffectiveFrom],'DDMONYYYY'),to_date(#[flowVars.EffectiveTill],'DDMONYYYY'),#[flowVars.routeString])]]></db:parameterized-query>
+                </db:insert>
+                <foreach collection="flowVars.array" doc:name="For Each">
+                    <expression-component doc:name="Expression"><![CDATA[
+flowVars.CountryCode=flowVars.array[counter-1].substring(0,2);
+flowVars.EntryWaypoint=flowVars.array[counter-1].substring(2,7);
+flowVars.EntryWaypointLattitude=flowVars.array[counter-1].substring(7,14);
+flowVars.EntryWaypointLangitude=flowVars.array[counter-1].substring(14,22);
+flowVars.ToEntryWaypoint=flowVars.array[counter-1].substring(22,29);
+flowVars.FromEntryWaypoint=flowVars.array[counter-1].substring(29,36);
+flowVars.distanceFromDepartureAirport=flowVars.array[counter-1].substring(36,41);
+flowVars.ExitWaypointCode=flowVars.array[counter-1].substring(41,46);
+flowVars.ExitWaypointLattitude=flowVars.array[counter-1].substring(46,53);
+flowVars.ExitWaypointLangitude=flowVars.array[counter-1].substring(53,61);
+flowVars.ToExitWaypoint=flowVars.array[counter-1].substring(61,68);
+flowVars.FromExitWaypoint=flowVars.array[counter-1].substring(68,75);
+flowVars.distanceFromExitDepartureAirport=flowVars.array[counter-1].substring(75,80);
+flowVars.Seperator=flowVars.array[counter-1].substring(80,100);
+]]></expression-component>
+                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_OVCLCOUNTRY ">
+                        <db:parameterized-query><![CDATA[insert into LIDO_OVCLCOUNTRY (SERIESID_FK,ROUTE_NAME,ROUTE_TYPE,PREDEFINED_ROUTE_STATUS,PREDEFINED_ROUTE_PURPOSE,FROM_WAYPOINT,TO_WAYPOINT,COUNTRY_CODE,ENTRY_WAYPOINT_CODE,ENTRY_WATPOINT_LATITUDE,ENTERY_WAYPOINT_LONGITUDE,AIRWAY_TO_ENTRY_WAYPOINT,AIRWAY_FROM_ENTRY_WAYPOINT,ENTRY_POINT_IN_NM,EXIT_WAYPOINT_CODE,EXIT_WAYPOINT_LATITUDE,EXIT_WAYPOINT_LONGITUDE,AIRWAY_TO_EXIT_WAYPOINT,AIRWAY_FROM_EXIT_WAYPOINT,EXIT_POINT_IN_NM,SEPERATOR,SEQ_ID) values ((SELECT MAX(SERIESID) from LIDO_ROUTEOVCL),#[flowVars.RouteName],#[flowVars.RouteType],#[flowVars.PredefinedRouteStatus],#[flowVars.PredefinedRoutePurpose],#[flowVars.FromWaypoint],#[flowVars.ToWaypoint],#[flowVars.CountryCode],#[flowVars.EntryWaypoint],#[flowVars.EntryWaypointLattitude],#[flowVars.EntryWaypointLangitude],#[flowVars.ToEntryWaypoint],#[flowVars.FromEntryWaypoint],#[flowVars.distanceFromDepartureAirport],#[flowVars.ExitWaypointCode],#[flowVars.ExitWaypointLattitude],#[flowVars.ExitWaypointLangitude],#[flowVars.ToExitWaypoint],#[flowVars.FromExitWaypoint],#[flowVars.distanceFromExitDepartureAirport],#[flowVars.Seperator],1)]]></db:parameterized-query>
+                    </db:insert>
+
+                </foreach>
+
+            </when>
+            <when expression="#[flowVars.data.substring(17,18).matches(&quot;^[A|M]{1}$&quot;)]">
+                <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_ROUTEEXTRACT">
+                    <db:parameterized-query><![CDATA[insert into LIDO_ROUTEEXTRACT (SERIESID,INFO_TYPE,ROUTE_NAME,ROUTE_TYPE,TRIGGER_VALUE,PREDEFINED_ROUTE_STATUS,PRED_COUNTER,TOTAL_NUMBER_OF_PREDS,PREDEFINED_ROUTE_PURPOSE,ROUTE_LENGTH,FROM_WAYPOINT,TO_WAYPOINT,NUMBER_OF_WAYPOINT,EFFECTIVE_FROM,EFFECTIVE_TILL,ROUTE_STRING) values (LIDO_EXTRACT_SEQ.nextval,#[flowVars.Infotype],#[flowVars.RouteName],#[flowVars.RouteType],#[flowVars.Trigger],#[flowVars.PredefinedRouteStatus],#[flowVars.PredCounter],#[flowVars.TotalNoofPreds],#[flowVars.PredefinedRoutePurpose],#[flowVars.RouteLength],#[flowVars.FromWaypoint],#[flowVars.ToWaypoint],#[flowVars.NoofCountries],to_date(#[flowVars.EffectiveFrom],'DDMONYYYY'),to_date(#[flowVars.EffectiveTill],'DDMONYYYY'),#[flowVars.routeString])]]></db:parameterized-query>
+                </db:insert>
+
+                <foreach collection="flowVars.array" doc:name="For Each">
+                    <expression-component doc:name="Expression"><![CDATA[flowVars.CountryCode=flowVars.array[counter-1].substring(0,2);
+flowVars.EntryWaypoint=flowVars.array[counter-1].substring(2,7);
+flowVars.EntryWaypointLattitude=flowVars.array[counter-1].substring(7,14);
+flowVars.EntryWaypointLangitude=flowVars.array[counter-1].substring(14,22);
+flowVars.ToEntryWaypoint=flowVars.array[counter-1].substring(22,29);
+flowVars.FromEntryWaypoint=flowVars.array[counter-1].substring(29,36);
+flowVars.distanceFromDepartureAirport=flowVars.array[counter-1].substring(36,41);
+flowVars.Seperator=flowVars.array[counter-1].substring(41,61);]]></expression-component>
+                    <db:insert config-ref="Oracle_Configuration" doc:name="LIDO_EXTRACTCOUNTRY">
+                        <db:parameterized-query><![CDATA[insert into LIDO_EXTRACTCOUNTRY (SERIESID,ROUTE_NAME,ROUTE_TYPE,PREDEFINED_ROUTE_STATUS,PREDEFINED_ROUTE_PURPOSE,FROM_WAYPOINT,TO_WAYPOINT,COUNTRY_CODE,WAYPOINT_CODE,WAYPOINT_LATITUDE,WAYPOINT_LONGITUDE,AIRWAY_TO_WAYPOINT,AIRWAY_FROM_WAYPOINT,WAYPOINT_IN_NM,SEPERATOR,SEQ_ID) values ((SELECT MAX(SERIESID) from LIDO_ROUTEEXTRACT),#[flowVars.RouteName],#[flowVars.RouteType],#[flowVars.PredefinedRouteStatus],#[flowVars.PredefinedRoutePurpose],#[flowVars.FromWaypoint],#[flowVars.ToWaypoint],#[flowVars.CountryCode],#[flowVars.EntryWaypoint],#[flowVars.EntryWaypointLattitude],#[flowVars.EntryWaypointLangitude],#[flowVars.ToEntryWaypoint],#[flowVars.FromEntryWaypoint],#[flowVars.distanceFromDepartureAirport],#[flowVars.Seperator],1)]]></db:parameterized-query>
+                    </db:insert>
+
+                </foreach>
+            </when>
+            <otherwise>
+                <set-variable variableName="other" value="" doc:name="Variable"/>
+            </otherwise>
+        </choice>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.data]]></dw:set-payload>
+        </dw:transform-message>
+        <choice doc:name="Choice">
+            <when expression="#[(flowVars.data.substring(17,18).matches(&quot;^[B|D]{1}$&quot;))&amp;&amp;(flowVars.data.substring(14,17).matches(&quot;^[JLL|JAI|ALL]{3}$&quot;))]">
+                <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" host="localhost" port="2222" path="/OVCL/SHORTFORMATBACKUP" user="tester" password="password" responseTimeout="10000" doc:name="ShortFormat Files"/>
+            </when>
+            <when expression="#[(flowVars.data.substring(17,18).matches(&quot;^[A|M]{1}$&quot;))&amp;&amp;(flowVars.data.substring(14,17).matches(&quot;^[JLL|JAI|ALL]{3}$&quot;))]">
+                <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" host="localhost" port="2222" path="/OVCL/LONGFORMAT" user="tester" password="password" responseTimeout="10000" doc:name="LongFormate Files"/>
+            </when>
+            <otherwise>
+                <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" host="localhost" port="2222" path="/OVCL/OTHERFORMATBACKUP" user="tester" password="password" responseTimeout="10000" doc:name="Other Files"/>
+            </otherwise>
+        </choice>
+
+        <exception-strategy ref="Global_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="tankeringFlow1">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+
+        <set-attachment attachmentName="attach" value="#[flowVars.errorMessage] in a given file" contentType="text/plain" doc:name="Attachment"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="venkat212.eidiko@gmail.com" password="8374945152" connector-ref="Gmail1" to="venkat212.eidiko@gmail.com" from="venkat212.eidiko@gmail.com" subject="error" responseTimeout="10000" doc:name="SMTP"/>
+    </flow>
+     
+</mule>
