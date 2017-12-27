@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <wmq:connector name="WMQ" hostName="localhost" port="8888" queueManager="B" channel="ATOB" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <file:connector name="File" outputPattern="HEADERFILE.txt" readFromDirectory="C:\Users\db2admin.bandaru-PC\Videos" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File1" outputPattern="HEADERFILE.txt" readFromDirectory="C:\Users\db2admin.bandaru-PC\Videos" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File2" outputPattern="HEADERFILE.txt" readFromDirectory="C:\Users\db2admin.bandaru-PC\Videos" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <flow name="lido_aftn_outboundFlow">
+        <wmq:inbound-endpoint queue="B.LQ" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+        <set-variable variableName="header" value="#['QD BOMOW9W' + &quot;\n&quot; + '.BOMOM9W 271400' + &quot;\n&quot;]" doc:name="Variable"/>
+        <set-payload value="#[flowVars.header + flowVars.data]" doc:name="Set Payload"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="lido_aftn.txt" host="localhost" port="222" path="data/LidoIntegration/NonVTFiles" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy when="#[exception.causedBy(java.net.ConnectException)]" doc:name="Catch Exception Strategy">
+                <set-payload value="#['SFTP server is down']" doc:name="Set Payload"/>
+                <set-attachment attachmentName="exception" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="naveenpullagura.eidiko@gmail.com" password="naveen457" connector-ref="Gmail" to="naveenpullagura.eidiko@gmail.com" from="naveenpullagura.eidiko@gmail.com" subject="Lido_AFTN Outbound Exception Cause" responseTimeout="10000" doc:name="SMTP"/>
+            </catch-exception-strategy>
+            <catch-exception-strategy doc:name="Catch Exception Strategy">
+                <logger message="Default Exception " level="INFO" doc:name="Logger"/>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+    </flow>
+</mule>
