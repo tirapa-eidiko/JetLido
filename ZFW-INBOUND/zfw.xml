@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File" readFromDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\m" autoDelete="false" streaming="true" validateConnections="true" pollingFrequency="100000" doc:name="File"/>
+    <file:connector name="File1" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1417" queueManager="kumar" channel="pvgrk" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <wmq:connector name="WMQ1" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <flow name="zfwFlow">
+        <sftp:inbound-endpoint host="localhost" port="24" path="/ravi/JET-LIDO/JET/IN" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload In a Variable"/>
+        <set-variable variableName="fileExt" value="#[message.inboundProperties.originalFilename]" doc:name="Variable"/>
+        <expression-component doc:name="splitting the payload and modified payload is taken"><![CDATA[String s=payload;
+flowVars.a=s.split('\n');
+flowVars.modified=flowVars.a[3];]]></expression-component>
+        <set-payload value="#[flowVars.modified]" doc:name="new payload"/>
+        <expression-component doc:name="splitting payload by space"><![CDATA[String s=payload;
+payload=s.split(' ');]]></expression-component>
+        <choice doc:name="Choice">
+            <when expression="payload.size()==12">
+                <logger level="INFO" doc:name="Logger" message="12"/>
+            </when>
+            <when expression="payload.size()==13">
+                <logger level="INFO" doc:name="Logger" message="13"/>
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+        <expression-component doc:name="validating payload and assigning to variables"><![CDATA[flowVars.error=='null';
+flowVars.MessageType='WAB';
+flowVars.Timestamp1=payload[1];
+flowVars.IATAAirlineDesignator1=payload[3].substring(0,2);
+flowVars.FlightNumber1=payload[3].substring(2,payload[3].length());
+if(flowVars.FlightNumber1.length()==2){
+flowVars.FlightNumber1=" "+flowVars.FlightNumber1+" ";
+}
+else if(flowVars.FlightNumber1.length()==4){
+flowVars.FlightNumber1=flowVars.FlightNumber1;
+}
+else if(flowVars.FlightNumber1.length()==3){
+flowVars.FlightNumber1=" "+flowVars.FlightNumber1;
+}
+else{
+flowVars.error='flight number';
+}
+flowVars.OperationalSuffix=' ';
+flowVars.DateOfOrigin1=payload[4];
+flowVars.Departureairport=payload[5];
+flowVars.Destinationairport=payload[6];
+flowVars.PlanningStatus='02';
+flowVars.Duplicatenumber='1';
+flowVars.Revisionnumber='01';
+flowVars.EstimTotalTrafficLoad='0000000';
+flowVars.BaggageIndicator='Y';
+flowVars.CargoIndicator='Y';
+flowVars.TransitloadIndicator='Y';
+flowVars.TailTankIndicator='N';
+flowVars.CenterofGravity='00000';
+flowVars.NumberofestimClass1='    ';
+flowVars.NumberofestimClass2='    ';
+flowVars.NumberofestimClass3='    ';
+flowVars.DryOperatingWeight=payload[7].substring(4,payload[7].length());
+
+flowVars.ActualZFW=flowVars.DryOperatingWeight;
+if(flowVars.DryOperatingWeight.length()==6){
+flowVars.ActualFuel='00000';
+}
+else{
+flowVars.ActualFuel='000000';
+}
+flowVars.Numberofestim='0';
+flowVars.UnitOfMeasure='K';
+//flowVars.DryOperatingIndex='     ';
+flowVars.CargoWeight='      ';
+flowVars.Separator='                  ';
+flowVars.DryOperatingIndex=payload[10];
+if(payload[10]==""){
+if(payload[10]=="" && payload[11]!=""){
+flowVars.DryOperatingIndex=payload[11];
+}
+else if(payload[10]=="" && payload[11]==""){
+flowVars.DryOperatingIndex=payload[12];
+}
+}
+if(flowVars.DryOperatingIndex.length()==4){
+flowVars.DryOperatingIndex='00'+flowVars.DryOperatingIndex;
+}
+else if(flowVars.DryOperatingIndex.length()==5){
+flowVars.DryOperatingIndex='0'+flowVars.DryOperatingIndex;
+}
+else if(flowVars.DryOperatingIndex.length()==3){
+flowVars.DryOperatingIndex='000'+flowVars.DryOperatingIndex;
+}
+int a1=Integer.parseInt(flowVars.DryOperatingWeight);
+int b=Integer.parseInt(flowVars.DryOperatingIndex.trim());
+int c=a1-b;
+flowVars.test=c;
+if(String.valueOf(flowVars.test).length()==5){
+flowVars.text='0'+flowVars.test;
+}
+else if(String.valueOf(flowVars.test).length()==4){
+flowVars.text='00'+flowVars.test;
+}
+else if(String.valueOf(flowVars.test).length()==3){
+flowVars.text='000'+flowVars.test;
+}
+else{
+flowVars.text=flowVars.test;
+}
+
+
+]]></expression-component>
+        <expression-component doc:name="validating dates"><![CDATA[import java.util.*;
+ import java.text.*;
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMyyyyHHmmss");
+SimpleDateFormat sdff1 = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+sdff1.setLenient(false);
+flowVars.date1='first';
+Date date = sdff.parse(flowVars.Timestamp1);
+flowVars.Timestamp=flowVars.Timestamp1;
+flowVars.date1='second';
+Date date = sdff1.parse(flowVars.DateOfOrigin1);
+flowVars.DateOfOrigin=flowVars.DateOfOrigin1;
+flowVars.date1="null";]]></expression-component>
+        <logger level="INFO" doc:name="Logger"/>
+
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.error==null  &amp;&amp; flowVars.date1==&quot;null&quot;]">
+                <set-variable variableName="MessageFormat" value="#[flowVars.MessageType]#[flowVars.Timestamp1]0#[flowVars.IATAAirlineDesignator1]  #[flowVars.FlightNumber1] #[flowVars.DateOfOrigin1]#[flowVars.Departureairport]  #[flowVars.Destinationairport]  #[flowVars.PlanningStatus]#[flowVars.Duplicatenumber]#[flowVars.Revisionnumber]#[flowVars.text]0#[flowVars.DryOperatingIndex]#[flowVars.BaggageIndicator]#[flowVars.CargoIndicator]#[flowVars.TransitloadIndicator]#[flowVars.TailTankIndicator]#[flowVars.ActualFuel]#[flowVars.DryOperatingWeight]#[flowVars.EstimTotalTrafficLoad]   #[flowVars.UnitOfMeasure]                                        " doc:name="FormatMessage"/>
+            </when>
+            <otherwise>
+                <set-variable variableName="exceptioncause" value="#[payload[ravi]]" doc:name="exception Variable"/>
+            </otherwise>
+        </choice>
+        <set-payload value="#[flowVars.MessageFormat]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <wmq:outbound-endpoint queue="re" connector-ref="WMQ" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <wmq:outbound-endpoint queue="remote" connector-ref="WMQ1" doc:name="WMQ">
+                <wmq:transaction action="NONE"/>
+            </wmq:outbound-endpoint>
+            <sftp:outbound-endpoint exchange-pattern="one-way" outputPattern="outputZFW.txt" host="localhost" port="24" path="/ravi/JET-LIDO/LIDO" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+        </scatter-gather>
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy doc:name="Catch Exception Strategy">
+                <logger message="exception raised" level="INFO" doc:name="Logger"/>
+                <choice doc:name="Choice">
+                    <when expression="#[flowVars.error!=&quot;&quot;]">
+                        <logger message="#[flowVars.error] " level="INFO" doc:name="Logger"/>
+                        <set-payload value="#[flowVars.error] is wrong" doc:name="Set Payload"/>
+                    </when>
+                    <when expression="#[flowVars.date1!=&quot;&quot;]  ||  #[exception.message.toString().contains('import java.text.*;')]">
+                        <logger message="#[flowVars.date1]" level="INFO" doc:name="Logger"/>
+                        <set-payload value="#[flowVars.date1] date is wrong" doc:name="Set Payload"/>
+                    </when>
+                    <otherwise>
+                        <logger message="some other exception" level="INFO" doc:name="Logger"/>
+                    </otherwise>
+                </choice>
+                <file:outbound-endpoint path="/r" connector-ref="File1" responseTimeout="10000" doc:name="File"/>
+                <set-attachment attachmentName="error " value="#payload[]" contentType="text/plain" doc:name="Attachment"/>
+                <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prasanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error cause" responseTimeout="10000" doc:name="SMTP"/>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+    </flow>
+</mule>

@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <file:connector name="File" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\m" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP" validateConnections="true" autoDelete="false" doc:name="SFTP" pollingFrequency="100000"/>
+    <file:connector name="File1" outputPattern="output.txt" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\sa" autoDelete="false" outputAppend="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File2" readFromDirectory="C:\Users\db2admin.bandaru-PC\Desktop\sa" autoDelete="false" streaming="true" validateConnections="true" doc:name="File" outputPattern="ravi.txt"/>
+    <sftp:connector name="SFTP1" validateConnections="true"  doc:name="SFTP"  pollingFrequency="10000" />
+    <wmq:connector name="WMQ" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <wmq:connector name="WMQ1" hostName="localhost" port="1417" queueManager="kumar" channel="pvgrk" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    
+    <sftp:connector name="SFTP4" validateConnections="true" duplicateHandling="addSeqNo" autoDelete="false" doc:name="SFTP"  />
+    <sftp:connector name="SFTP2" validateConnections="true" duplicateHandling="overwrite" autoDelete="false" doc:name="SFTP"/>
+    <file:connector name="File3" readFromDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\rem" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File4" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File5" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File6" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File7" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File8" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File9" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File10" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File11" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\ERROR" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <file:connector name="File12" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\BACKUP" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:gmail-connector name="Gmail1" validateConnections="true" doc:name="Gmail" contentType="text/plain"/>
+    <file:connector name="File13" readFromDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\rem" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <flow name="trrFlow">
+        <sftp:inbound-endpoint connector-ref="SFTP1" host="localhost" port="24" path="/ravi/r" user="tester" password="password" responseTimeout="1000" doc:name="picking file from sftp server location"/>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload is stored in the form of string in data var"/>
+        <expression-component doc:name="splitting payload  by (----)"><![CDATA[flowVars.header=flowVars.data.split("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+
+flowVars.main=flowVars.header[1];
+
+
+]]></expression-component>
+        <foreach collection="#[flowVars.header]" doc:name="For Each">
+            <choice doc:name="omitting header">
+                <when expression="#[payload!=flowVars.main]">
+                    <dw:transform-message doc:name="splitting payload by '|'">
+                        <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+
+(payload splitBy "|")  map ((trim $) when ($!="") otherwise "ravi")]]></dw:set-payload>
+                    </dw:transform-message>
+                    <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+                    <choice doc:name="Choice">
+                        <when expression="#[payload!=&quot;[ravi]&quot; &amp;&amp; payload!=&quot;&quot;]">
+                            <expression-component doc:name="payload is split by' ,'"><![CDATA[flowVars.commasplit=payload.split(',');]]></expression-component>
+                            <set-payload value="#[flowVars.commasplit]" doc:name="Set Payload"/>
+                            <expression-component doc:name="validations"><![CDATA[flowVars.Infotype="TRR";
+if(payload[3].length()>3){
+String s=payload[3];
+payload[3]=s.trim();
+}
+if(payload[3].length()<=3 && payload[3].matches(".*[a-zA-Z,1-9].*")){
+flowVars.a=payload[3];
+flowVars.AirlineDesignator=flowVars.a.trim();
+}
+else{
+flowVars.error=flowVars.counter+'Line'+' AirlineDesignator is wrong';
+}
+String flight=payload[4];
+payload[4]=flight.trim();
+if((payload[4].length()==4) && (payload[4].matches(".*[a-zA-Z,1-9].*") && payload[4].contains('D'))){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]=payload[4]+"D";
+flowVars.Flightnumber=payload[4];
+}
+else if((payload[4].length()==3) && (payload[4].matches(".*[a-zA-Z,1-9].*") && payload[4].contains('D'))){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]=" "+payload[4]+"D";
+flowVars.Flightnumber=payload[4];
+}
+else if((payload[4].length()==2) && (payload[4].matches(".*[a-zA-Z,1-9].*") && payload[4].contains('D'))){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]="  "+payload[4]+"D";
+flowVars.Flightnumber=payload[4];
+}
+else if(payload[4].length()==4&& payload[4].matches(".*[1-9].*")){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]=payload[4]+" ";
+flowVars.Flightnumber=payload[4];
+}
+else if(payload[4].length()==3&& payload[4].matches(".*[1-9].*")){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]=" "+payload[4]+" ";
+flowVars.Flightnumber=payload[4];
+}
+else if(payload[4].length()==2&& payload[4].matches(".*[1-9].*")){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]="  "+payload[4]+" ";
+flowVars.Flightnumber=payload[4];
+}
+else if(payload[4].length()==1 && payload[4].matches(".*[1-9].*")){
+String s=payload[4];
+payload[4]=s.trim();
+payload[4]="   "+payload[4]+" ";
+flowVars.Flightnumber=payload[4];
+}
+
+else {
+flowVars.error=flowVars.counter+'Line'+'Flightnumber is wrong';
+}if(payload[2].length()>2){
+String s=payload[2];
+payload[2]=s.trim();
+}
+if(payload[2].length()==2 && payload[2].matches (".*[a-zA-Z,1-9].*")){
+flowVars.CountryCode=payload[2];
+}
+else{
+flowVars.error=flowVars.counter+'Line'+'CountryCode is wrong';
+}
+
+if(payload[5].length()==6 && payload[5].matches (".*[a-zA-Z].*")){
+String s=payload[5];
+payload[5]=s.trim();
+flowVars.Entrywaypointcode=payload[5];
+}
+else if(payload[5]==" "){
+String s=payload[5];
+payload[5]=s.trim();
+flowVars.Entrywaypointcode="     ";
+}
+else{
+flowVars.error=flowVars.counter+'Line'+'Entrywaypointcode is wrong';
+}
+if(payload[21].length()==7 || (payload[21].matches (".*[a-zA-Z,1-9].*") || payload[21]=="")){
+flowVars.Entrywaypointlatitude=payload[21];
+}
+if(payload[22].length()==8 || (payload[22].matches (".*[a-zA-Z,1-9].*") || payload[22]=="")){
+flowVars.Entrywaypointlongitude=payload[22];
+}
+if(payload[6].length()>5){
+String s=payload[6];
+payload[6]=s.trim();
+}
+if(payload[6].length()==5 && payload[6].matches (".*[a-zA-Z].*") ){
+flowVars.Exitwaypointcode=payload[6];
+}
+else if(payload[6]==" "){
+flowVars.Exitwaypointcode="     ";
+}
+else{
+flowVars.error=flowVars.counter+'Line'+'Exitwaypointcode is wrong';
+}
+if(payload[23].length()==7 || (payload[23].matches (".*[a-zA-Z,1-9].*") || payload[23]=="")){
+flowVars.Exitwaypointlatitude=payload[23];
+}
+if(payload[24].length()==8 || (payload[24].matches (".*[a-zA-Z,1-9].*") || payload[24]=="")){
+flowVars.Exitwaypointlongitude=payload[24];
+}
+if(payload[13].length()==12){
+String s=payload[13];
+payload[13]=s.trim();
+flowVars.PermitNumber=payload[13]+"       ";
+}
+else if(payload[13].length()==9){
+String s=payload[13];
+payload[13]=s.trim();
+flowVars.PermitNumber=payload[13]+"          ";
+}
+else if(payload[13].length()==18){
+String s=payload[13];
+payload[13]=s.trim();
+flowVars.PermitNumber=payload[13]+" ";
+}
+else if(payload[13].length()==19){
+String s=payload[13];
+payload[13]=s.trim();
+flowVars.PermitNumber=payload[13];
+}
+else if(payload[13].length()<5){
+String s=payload[13];
+payload[13]=s.trim();
+flowVars.PermitNumber=payload[13]+"                  ";
+}
+else{
+flowVars.error=flowVars.counter+'Line'+'permit number is wrong';
+}
+flowVars.DayofWeek="111111 ";
+if(payload[19].length()==2){
+String s=payload[19];
+payload[19]=s.trim();
+flowVars.OutputIndicator=payload[19];
+}
+flowVars.Trafficrightstatus="0";
+if(payload[9].length()>9){
+String s=payload[9];
+payload[9]=s.trim();
+flowVars.EffectiveFrom=payload[9];
+}
+else{
+flowVars.EffectiveFrom=payload[9];
+}
+if(payload[10].length()>9){
+String s=payload[10];
+payload[10]=s.trim();
+flowVars.EffectiveTill=payload[10];
+}else{
+flowVars.EffectiveTill=payload[10];
+}
+if(payload[1].length()==8){
+String s=payload[1];
+payload[1]=s.trim();
+flowVars.COUNTRY=payload[1]+"    ";
+}
+else if(payload[1].length()==11){
+String s=payload[1];
+payload[1]=s.trim();
+flowVars.COUNTRY=payload[1]+" ";
+}
+else if(payload[1].length()==12){
+String s=payload[1];
+payload[1]=s.trim();
+flowVars.COUNTRY=payload[1];
+}
+if(payload[20].length()==7){
+String s=payload[20];
+payload[20]=s.trim();
+}
+if((payload[20]=="INSERT") || (payload[20]=="DELETE")){
+flowVars.M=payload[20];
+flowVars.Messagestatus=flowVars.M[0];
+}
+else{
+flowVars.error=flowVars.counter+'Line'+'message status is wrong';
+}
+flowVars.number=flowVars.counter;
+]]></expression-component>
+                            <expression-component doc:name="date validation"><![CDATA[import java.util.*;
+ import java.text.*;
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+Date date = sdff.parse(flowVars.EffectiveFrom);
+Date date = sdff.parse(flowVars.EffectiveTill);
+
+]]></expression-component>
+                            <set-variable variableName="messageformat" value="#[flowVars.Infotype]#[flowVars.AirlineDesignator]  #[flowVars.Flightnumber]#[flowVars.CountryCode]#[flowVars.Entrywaypointcode]               #[flowVars.Exitwaypointcode]               #[flowVars.PermitNumber]                                #[flowVars.DayofWeek]#[flowVars.OutputIndicator]#[flowVars.Trafficrightstatus]#[flowVars.Messagestatus]#[flowVars.EffectiveFrom]#[flowVars.EffectiveTill]                    #[flowVars.COUNTRY]                   #[flowVars.COUNTRY]" doc:name="format message"/>
+
+                            <choice doc:name="checking error raised or not">
+                                <when expression="flowVars.error==null">
+                                    <dw:transform-message doc:name="Transform Message">
+                                        <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.messageformat]]></dw:set-payload>
+                                    </dw:transform-message>
+                                    <set-payload value="#[message.payload+'\n']" doc:name="Set Payload"/>
+                                    <sftp:outbound-endpoint exchange-pattern="request-response" connector-ref="SFTP4" outputPattern="file.txt" host="localhost" port="24" path="/ravi/rem" user="tester" password="password" responseTimeout="10000" doc:name="SFTP" duplicateHandling="append"/>
+
+
+
+                                </when>
+
+                                <when expression="#[flowVars.error==&quot;1&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="AirlineDesignator is wrong"/>
+                                    <set-payload value="#['AirlineDesignator is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File11" responseTimeout="10000" doc:name="File"/>
+                                    <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                                    <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prasanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error message" responseTimeout="10000" doc:name="SMTP"/>
+                                </when>
+                                <when expression="#[flowVars.error==&quot;2&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="Flightnumber is wrong"/>
+                                    <set-payload value="#['Flightnumber is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File10" responseTimeout="10000" doc:name="File"/>
+                                </when>
+                                <when expression="#[flowVars.error==&quot;3&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="CountryCode is wrong"/>
+                                    <set-payload value="#['CountryCode is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File9" responseTimeout="10000" doc:name="File"/>
+                                </when>
+                                <when expression="#[flowVars.error==&quot;4&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="Entrywaypointcode is wrong"/>
+                                    <set-payload value="#['Entrywaypointcode is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File8" responseTimeout="10000" doc:name="File"/>
+
+                                </when>
+                                <when expression="#[flowVars.error==&quot;5&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="Exitwaypointcode is wrong"/>
+                                    <set-payload value="#['Exitwaypointcode is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File7" responseTimeout="10000" doc:name="File"/>
+
+                                </when>
+                                <when expression="#[flowVars.error==&quot;6&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="permit number is wrong"/>
+                                    <set-payload value="#['permit number is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File6" responseTimeout="10000" doc:name="File"/>
+                                </when>
+                                <when expression="#[flowVars.error==&quot;7&quot;]">
+                                    <logger level="INFO" doc:name="Logger" message="message status is wrong"/>
+                                    <set-payload value="#['message status is wrong']" doc:name="Set Payload"/>
+                                    <file:outbound-endpoint path="/r" connector-ref="File5" responseTimeout="10000" doc:name="File"/>
+                                </when>
+                                <otherwise>
+                                    <set-variable variableName="err" value="#[payload[pvgrk]]" doc:name="Variable"/>
+
+                                </otherwise>
+                            </choice>
+                        </when>
+                        <otherwise>
+                            <logger message="null" level="INFO" doc:name="Logger"/>
+                        </otherwise>
+                    </choice>
+                </when>
+                <otherwise>
+                    <logger message="header" level="INFO" doc:name="Logger"/>
+                </otherwise>
+            </choice>
+        </foreach>
+        <flow-ref name="trrFlow2" doc:name="trrFlow2"/>
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy when="#[exception.causedBy(org.mule.api.expression.ExpressionRuntimeException)]" doc:name="Catch Exception Strategy">
+                <logger message="#[flowVars.error]" level="INFO" doc:name="Logger"/>
+                <choice doc:name="checking error or date exception">
+                    <when expression="#[exception.message.toString().contains('import java.text.*;')]">
+                        <set-payload value="#[flowVars.number +'    Line'+'     invalid date']" doc:name="Set Payload"/>
+                    </when>
+                    <otherwise>
+                        <set-payload value="#[flowVars.error]" doc:name="Set Payload"/>
+                    </otherwise>
+                </choice>
+                <file:outbound-endpoint path="/r" connector-ref="File12" responseTimeout="10000" doc:name="File"/>
+                <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail1" to="prasanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error in file" responseTimeout="10000" doc:name="SMTP"/>
+                <logger message="error file sent " level="INFO" doc:name="Logger"/>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+
+
+
+    </flow>
+
+    <flow name="trrFlow2">
+        <file:inbound-endpoint path="/r" connector-ref="File13" responseTimeout="10000" doc:name="File"/>
+       <!--  <sftp:inbound-endpoint host="localhost" port="24" responseTimeout="10000" doc:name="SFTP" connector-ref="SFTP2" password="password" path="/ravi/rem" user="tester"/>
+        --> <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP1" outputPattern="s1.txt" host="localhost" port="24" path="/ravi/JET-LIDO/LIDO" user="tester" password="password" responseTimeout="10000" doc:name="SFTP" duplicateHandling="append"/>
+            <processor-chain>
+                <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+                <wmq:outbound-endpoint queue="remote" connector-ref="WMQ" doc:name="WMQ">
+                    <wmq:transaction action="NONE"/>
+                </wmq:outbound-endpoint>
+            </processor-chain>
+            <processor-chain>
+                <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+                <wmq:outbound-endpoint queue="re" connector-ref="WMQ1" doc:name="WMQ"/>
+            </processor-chain>
+
+        </scatter-gather>
+
+    </flow>
+</mule>
