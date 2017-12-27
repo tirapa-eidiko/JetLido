@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="system" password="sarasu10" doc:name="Oracle Configuration"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="8888" queueManager="B" channel="ATOB" username="db2admin" password="bandaru10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <sftp:connector name="SFTP" validateConnections="true" pollingFrequency="100000" autoDelete="false" doc:name="SFTP"/>
+    <file:connector name="File" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <flow name="teFlow">
+        <wmq:inbound-endpoint queue="B.LQ" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="xmldata" value="#[payload]" doc:name="original data"/>
+
+        <json:xml-to-json-transformer doc:name="XML to JSON"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-variable variableName="data"><![CDATA[%dw 1.0
+%output application/java
+---
+payload
+]]></dw:set-variable>
+
+        </dw:transform-message>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars['data']['AtcCharges']['Charges']['@count']!='1']">
+                <foreach collection="#[flowVars.data.AtcCharges.Charges.Charge]" doc:name="For Each">
+                    <expression-component doc:name="Assigning"><![CDATA[flowVars.flightPlanId=flowVars['data']['AtcCharges']['@flightPlanId'];
+flowVars.action=flowVars['data']['AtcCharges']['@action'];
+flowVars.computedTime=flowVars['data']['AtcCharges']['@computedTime'];
+flowVars.scheduledTimeOfDeparture=flowVars['data']['AtcCharges']['Flight']['@scheduledTimeOfDeparture'];
+flowVars.scheduledTimeOfArrival=flowVars['data']['AtcCharges']['Flight']['@scheduledTimeOfArrival'];
+flowVars.airlineIataCode=flowVars['data']['AtcCharges']['Flight']['FlightIdentification']['@airlineIataCode'];
+flowVars.flightNumber=flowVars['data']['AtcCharges']['Flight']['FlightIdentification']['@flightNumber'];
+flowVars.DepartureAirportICAOCode=flowVars['data']['AtcCharges']['Flight']['DepartureAirport']['AirportICAOCode'];
+flowVars.DepartureAirportIATACode=flowVars['data']['AtcCharges']['Flight']['DepartureAirport']['AirportIATACode'];
+flowVars.ArrivalAirportICAOCode=flowVars['data']['AtcCharges']['Flight']['ArrivalAirport']['AirportICAOCode'];
+flowVars.ArrivalAirportIATACode=flowVars['data']['AtcCharges']['Flight']['ArrivalAirport']['AirportIATACode'];
+flowVars.aircraftRegistration=flowVars['data']['AtcCharges']['Flight']['Aircraft']['@aircraftRegistration'];
+flowVars.aircraftIcaoType=flowVars['data']['AtcCharges']['Flight']['Aircraft']['@aircraftIcaoType'];
+flowVars.MTOW=flowVars['data']['AtcCharges']['Flight']['Aircraft']['MTOW']['$'];
+flowVars.MTOWunit=flowVars['data']['AtcCharges']['Flight']['Aircraft']['MTOW']['@unit'];
+flowVars.Routeoption=flowVars['data']['AtcCharges']['Flight']['Route']['@option'];
+flowVars.Routeinflight=flowVars['data']['AtcCharges']['Flight']['Route']['@inflight'];
+flowVars.AtsFplItem15=flowVars['data']['AtcCharges']['Flight']['Route']['AtsFplItem15'];
+flowVars.TotalAtcChargeCost=flowVars['data']['AtcCharges']['TotalAtcCharge']['Cost']['$'];
+flowVars.TotalAtcChargeCostcurrency=flowVars['data']['AtcCharges']['TotalAtcCharge']['Cost']['@currency'];
+flowVars.id=payload['@id'];
+flowVars.name=payload['@name'];
+flowVars.provider=payload['@provider'];
+flowVars.type=payload['@type'];
+flowVars.Entry=payload['Entry']['$'];
+flowVars.Entryat=payload['Entry']['@at'];
+flowVars.Entryvia=payload['Entry']['@via'];
+flowVars.Exit=payload['Exit']['$'];
+flowVars.Exitat=payload['Exit']['@at'];
+flowVars.Exitvia=payload['Exit']['@via'];
+flowVars.FlownDistance=payload['FlownDistance']['$'];
+flowVars.FlownDistanceunit=payload['FlownDistance']['@unit'];
+flowVars.GreatCircleDistance=payload['GreatCircleDistance']['$'];
+flowVars.GreatCircleDistanceunit=payload['GreatCircleDistance']['@unit'];
+flowVars.UnitRate=payload['UnitRate'];
+flowVars.WeightFactor=payload['WeightFactor'];
+flowVars.DistanceFactor=payload['DistanceFactor'];
+flowVars.Cost=payload['Cost'][1]['$'];
+flowVars.Costcurrency=payload['Cost'][1]['@currency'];
+flowVars.CostcurrencyexchangeRate=payload['Cost'][1]['@exchangeRate'];
+flowVars.MinCost=payload['MinCost']['$'];
+flowVars.MinCostcurrency=payload['MinCost']['@currency'];
+flowVars.MaxCost=payload['MaxCost']['$'];
+flowVars.MaxCostcurrency=payload['MaxCost']['@currency'];
+flowVars.FleetMLW=payload['FleetMLW'];
+flowVars.FleetMTXW=payload['FleetMTXW'];
+flowVars.FleetMTOW=payload['FleetMTOW'];
+flowVars.DistanceCatalogueFactor=payload['DistanceCatalogueFactor'];
+flowVars.TableFactor=payload['TableFactor'];
+flowVars.DistanceType=payload['DistanceType'];]]></expression-component>
+                    <expression-component doc:name="Date Formatting"><![CDATA[flowVars.Entryvalid=flowVars.Entryat.replace("T","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace("Z","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace(":","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace("-","");
+flowVars.Exitvalid=flowVars.Exitat.replace("T","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace("Z","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace(":","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace("-","");
+flowVars.computedTimevalid=flowVars.computedTime.replace("T","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace("Z","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace(":","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace("-","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparture.replace("T","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace("Z","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace(":","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace("-","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrival.replace("T","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace("Z","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace(":","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace("-","");
+
+]]></expression-component>
+                    <expression-component doc:name="Date validation"><![CDATA[import java.util.*; import java.text.*;
+
+SimpleDateFormat sdff = new SimpleDateFormat("yyyyMMddhhmmss");
+sdff.setLenient(false);
+Date d=sdff.parse(flowVars.Entryvalid);
+Date d1=sdff.parse(flowVars.computedTimevalid);
+Date d2=sdff.parse(flowVars.scheduledTimeOfDeparturevalid);
+Date d2=sdff.parse(flowVars.scheduledTimeOfArrivalvalid);
+Date d3=sdff.parse(flowVars.Exitvalid);
+
+]]></expression-component>
+                    <db:insert config-ref="Oracle_Configuration" doc:name="CHARGES_COST_VIEWER _Multiple">
+                        <db:parameterized-query><![CDATA[insert into CHARGES_COST_VIEWER values(#[flowVars.id],#[flowVars.name],#[flowVars.provider],#[flowVars.type],#[flowVars.Entry],#[flowVars.Entryat],#[flowVars.Entryvia],#[flowVars.Exit],#[flowVars.Exitat],#[flowVars.Exitvia],#[flowVars.FlownDistance],#[flowVars.FlownDistanceunit],#[flowVars.GreatCircleDistance],#[flowVars.GreatCircleDistanceunit],#[flowVars.UnitRate],#[flowVars.WeightFactor],#[flowVars.DistanceFactor],#[flowVars.Cost],#[flowVars.Costcurrency],#[flowVars.CostcurrencyexchangeRate],#[flowVars.MinCost],#[flowVars.MinCostcurrency],#[flowVars.MaxCost],#[flowVars.MaxCostcurrency],#[flowVars.FleetMLW],#[flowVars.FleetMTXW],#[flowVars.FleetMTOW],#[flowVars.DistanceCatalogueFactor],#[flowVars.DistanceType])]]></db:parameterized-query>
+
+                    </db:insert>
+                    <logger message="Data inserted successfully" level="INFO" doc:name="Logger"/>
+                </foreach>
+                <db:insert config-ref="Oracle_Configuration" doc:name="FLIGHT_COST_VIEWER_Multiple">
+                    <db:parameterized-query><![CDATA[insert into FLIGHT_COST_VIEWER values(#[flowVars.flightPlanId],#[flowVars.action],#[flowVars.computedTime],#[flowVars.scheduledTimeOfDeparture],#[flowVars.scheduledTimeOfArrival],#[flowVars.airlineIataCode],#[flowVars.flightNumber],#[flowVars.DepartureAirportICAOCode],#[flowVars.DepartureAirportIATACode],#[flowVars.ArrivalAirportICAOCode],#[flowVars.ArrivalAirportIATACode],#[flowVars.aircraftRegistration],#[flowVars.aircraftIcaoType],#[flowVars.MTOW],#[flowVars.MTOWunit],#[flowVars.Routeoption],#[flowVars.Routeinflight],#[flowVars.AtsFplItem15],#[flowVars.TotalAtcChargeCost],#[flowVars.TotalAtcChargeCostcurrency])]]></db:parameterized-query>
+                </db:insert>
+            </when>
+            <when expression="#[flowVars['data']['AtcCharges']['Charges']['@count']=='1']">
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-variable variableName="d"><![CDATA[%dw 1.0
+%output application/java
+---
+{
+flightPlanId:flowVars['data']['AtcCharges']['@flightPlanId'],
+action:flowVars['data']['AtcCharges']['@action'],
+computedTime:flowVars['data']['AtcCharges']['@computedTime'],
+scheduledTimeOfDeparture:flowVars['data']['AtcCharges']['Flight']['@scheduledTimeOfDeparture'],
+scheduledTimeOfArrival:flowVars['data']['AtcCharges']['Flight']['@scheduledTimeOfArrival'],
+airlineIataCode:flowVars['data']['AtcCharges']['Flight']['FlightIdentification']['@airlineIataCode'],
+flightNumber:flowVars['data']['AtcCharges']['Flight']['FlightIdentification']['@flightNumber'],
+DepartureAirportICAOCode:flowVars['data']['AtcCharges']['Flight']['DepartureAirport']['AirportICAOCode'],
+DepartureAirportIATACode:flowVars['data']['AtcCharges']['Flight']['DepartureAirport']['AirportIATACode'],
+ArrivalAirportICAOCode:flowVars['data']['AtcCharges']['Flight']['ArrivalAirport']['AirportICAOCode'],
+ArrivalAirportIATACode:flowVars['data']['AtcCharges']['Flight']['ArrivalAirport']['AirportIATACode'],
+aircraftRegistration:flowVars['data']['AtcCharges']['Flight']['Aircraft']['@aircraftRegistration'],
+aircraftIcaoType:flowVars['data']['AtcCharges']['Flight']['Aircraft']['@aircraftIcaoType'],
+MTOW:flowVars['data']['AtcCharges']['Flight']['Aircraft']['MTOW'],
+MTOWunit:flowVars['data']['AtcCharges']['Flight']['Aircraft']['MTOW']['@unit'],
+Routeoption:flowVars['data']['AtcCharges']['Flight']['Route']['@option'],
+Routeinflight:flowVars['data']['AtcCharges']['Flight']['Route']['@inflight'],
+AtsFplItem15:flowVars['data']['AtcCharges']['Flight']['Route']['AtsFplItem15'],
+TotalAtcChargeCost:flowVars['data']['AtcCharges']['TotalAtcCharge']['Cost'],
+TotalAtcChargeCostcurrency:flowVars['data']['AtcCharges']['TotalAtcCharge']['Cost']['@currency'],
+id:flowVars['data']['AtcCharges']['Charges']['Charge']['@id'],
+name:flowVars['data']['AtcCharges']['Charges']['Charge']['@name'],
+provider:flowVars['data']['AtcCharges']['Charges']['Charge']['@provider'],
+type:flowVars['data']['AtcCharges']['Charges']['Charge']['@type'],
+Entry:flowVars['data']['AtcCharges']['Charges']['Charge']['Entry'],
+Entryat:flowVars['data']['AtcCharges']['Charges']['Charge']['Entry']['@at'],
+Entryvia:flowVars['data']['AtcCharges']['Charges']['Charge']['Entry']['@via'],
+Exit:flowVars['data']['AtcCharges']['Charges']['Charge']['Exit'],
+Exitat:flowVars['data']['AtcCharges']['Charges']['Charge']['Exit']['@at'],
+Exitvia:flowVars['data']['AtcCharges']['Charges']['Charge']['Exit']['@via'],
+FlownDistance:flowVars['data']['AtcCharges']['Charges']['Charge']['FlownDistance'],
+FlownDistanceunit:flowVars['data']['AtcCharges']['Charges']['Charge']['FlownDistance']['@unit'],
+GreatCircleDistance:flowVars['data']['AtcCharges']['Charges']['Charge']['GreatCircleDistance'],
+GreatCircleDistanceunit:flowVars['data']['AtcCharges']['Charges']['Charge']['GreatCircleDistance']['@unit'],
+UnitRate:flowVars['data']['AtcCharges']['Charges']['Charge']['UnitRate'],
+WeightFactor:flowVars['data']['AtcCharges']['Charges']['Charge']['WeightFactor'],
+DistanceFactor:flowVars['data']['AtcCharges']['Charges']['Charge']['DistanceFactor'],
+Cost:flowVars['data']['AtcCharges']['Charges']['Charge']['Cost'][1],
+Costcurrency:flowVars['data']['AtcCharges']['Charges']['Charge']['Cost'][1]['@currency'],
+CostcurrencyexchangeRate:flowVars['data']['AtcCharges']['Charges']['Charge']['Cost'][1]['@exchangeRate'],
+MinCost:flowVars['data']['AtcCharges']['Charges']['Charge']['MinCost'],
+MinCostcurrency:flowVars['data']['AtcCharges']['Charges']['Charge']['MinCost']['@currency'],
+MaxCost:flowVars['data']['AtcCharges']['Charges']['Charge']['MaxCost'],
+MaxCostcurrency:flowVars['data']['AtcCharges']['Charges']['Charge']['MaxCost']['@currency'],
+FleetMLW:flowVars['data']['AtcCharges']['Charges']['Charge']['FleetMLW'],
+FleetMTXW:flowVars['data']['AtcCharges']['Charges']['Charge']['FleetMTXW'],
+FleetMTOW:flowVars['data']['AtcCharges']['Charges']['Charge']['FleetMTOW'],
+DistanceCatalogueFactor:flowVars['data']['AtcCharges']['Charges']['Charge']['DistanceCatalogueFactor'],
+TableFactor:flowVars['data']['AtcCharges']['Charges']['Charge']['TableFactor'],
+DistanceType:flowVars['data']['AtcCharges']['Charges']['Charge']['DistanceType']
+}]]></dw:set-variable>
+                </dw:transform-message>
+                <expression-component doc:name="Expression"><![CDATA[flowVars.flightPlanId=flowVars['d']['flightPlanId'];
+flowVars.action=flowVars['d']['action'];
+flowVars.computedTime=flowVars['d']['computedTime'];
+flowVars.scheduledTimeOfDeparture=flowVars['d']['scheduledTimeOfDeparture'];
+flowVars.scheduledTimeOfArrival=flowVars['d']['scheduledTimeOfArrival'];
+flowVars.airlineIataCode=flowVars['d']['airlineIataCode'];
+flowVars.flightNumber=flowVars['d']['flightNumber'];
+flowVars.DepartureAirportICAOCode=flowVars['d']['DepartureAirportICAOCode'];
+flowVars.DepartureAirportIATACode=flowVars['d']['DepartureAirportIATACode'];
+flowVars.ArrivalAirportICAOCode=flowVars['d']['ArrivalAirportICAOCode'];
+flowVars.ArrivalAirportIATACode=flowVars['d']['ArrivalAirportIATACode'];
+flowVars.aircraftRegistration=flowVars['d']['aircraftRegistration'];
+flowVars.aircraftIcaoType=flowVars['d']['aircraftIcaoType'];
+flowVars.MTOW=flowVars['d']['MTOW']['$'];
+flowVars.MTOWunit=flowVars['d']['MTOW']['@unit'];
+flowVars.Routeoption=flowVars['d']['Routeoption'];
+flowVars.Routeinflight=flowVars['d']['Routeinflight'];
+flowVars.AtsFplItem15=flowVars['d']['AtsFplItem15'];
+flowVars.TotalAtcChargeCost=flowVars['d']['TotalAtcChargeCost']['$'];
+flowVars.TotalAtcChargeCostcurrency=flowVars['d']['TotalAtcChargeCostcurrency'];
+flowVars.id=flowVars.d.id;
+flowVars.name=flowVars.d.name;
+flowVars.provider=flowVars.d.provider;
+flowVars.type=flowVars.d.type;
+flowVars.Entry=flowVars.d.Entry.$;
+flowVars.Entryat=flowVars.d.Entryat;
+flowVars.Entryvia=flowVars.d.Entryvia;
+flowVars.Exit=flowVars.d.Exit.$;
+flowVars.Exitat=flowVars.d.Exitat;
+flowVars.Exitvia=flowVars.d.Exitvia;
+flowVars.FlownDistance=flowVars.d.FlownDistance.$;
+flowVars.FlownDistanceunit=flowVars.d.FlownDistanceunit;
+flowVars.GreatCircleDistance=flowVars.d.GreatCircleDistance.$;
+flowVars.GreatCircleDistanceunit=flowVars.d.GreatCircleDistanceunit;
+flowVars.UnitRate=flowVars.d.UnitRate;
+flowVars.WeightFactor=flowVars.d.WeightFactor;
+flowVars.DistanceFactor=flowVars.d.DistanceFactor;
+flowVars.Cost=flowVars.d.Cost.$;
+flowVars.Costcurrency=flowVars.d.Costcurrency;
+flowVars.CostcurrencyexchangeRate=flowVars.d.CostcurrencyexchangeRate;
+flowVars.MinCost=flowVars.d.MinCost.$;
+flowVars.MinCostcurrency=flowVars.d.MinCostcurrency;
+flowVars.MaxCost=flowVars.d.MaxCost.$;
+flowVars.MaxCostcurrency=flowVars.d.MaxCostcurrency;
+flowVars.FleetMLW=flowVars.d.FleetMLW;
+flowVars.FleetMTXW=flowVars.d.FleetMTXW;
+flowVars.FleetMTOW=flowVars.d.FleetMTOW;
+flowVars.DistanceCatalogueFactor=flowVars.d.DistanceCatalogueFactor;
+flowVars.TableFactor=flowVars.d.TableFactor;
+flowVars.DistanceType=flowVars.d.DistanceType;]]></expression-component>
+                <expression-component doc:name="Date Formatting"><![CDATA[flowVars.Entryvalid=flowVars.Entryat.replace("T","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace("Z","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace(":","");
+flowVars.Entryvalid=flowVars.Entryvalid.replace("-","");
+flowVars.Exitvalid=flowVars.Exitat.replace("T","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace("Z","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace(":","");
+flowVars.Exitvalid=flowVars.Exitvalid.replace("-","");
+flowVars.computedTimevalid=flowVars.computedTime.replace("T","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace("Z","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace(":","");
+flowVars.computedTimevalid=flowVars.computedTimevalid.replace("-","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparture.replace("T","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace("Z","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace(":","");
+flowVars.scheduledTimeOfDeparturevalid=flowVars.scheduledTimeOfDeparturevalid.replace("-","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrival.replace("T","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace("Z","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace(":","");
+flowVars.scheduledTimeOfArrivalvalid=flowVars.scheduledTimeOfArrivalvalid.replace("-","");
+
+]]></expression-component>
+                <expression-component doc:name="Date Validation"><![CDATA[import java.util.*; import java.text.*;
+
+SimpleDateFormat sdff = new SimpleDateFormat("yyyyMMddHHmmss");
+sdff.setLenient(false);
+Date d=sdff.parse(flowVars.Entryvalid);
+Date d1=sdff.parse(flowVars.computedTimevalid);
+Date d2=sdff.parse(flowVars.scheduledTimeOfDeparturevalid);
+Date d2=sdff.parse(flowVars.scheduledTimeOfArrivalvalid);
+Date d3=sdff.parse(flowVars.Exitvalid);
+
+]]></expression-component>
+                <db:insert config-ref="Oracle_Configuration" doc:name="CHARGES_COST_VIEWER_Single">
+                    <db:parameterized-query><![CDATA[insert into CHARGES_COST_VIEWER values(#[flowVars.id],#[flowVars.name],#[flowVars.provider],#[flowVars.type],#[flowVars.Entry],#[flowVars.Entryat],#[flowVars.Entryvia],#[flowVars.Exit],#[flowVars.Exitat],#[flowVars.Exitvia],#[flowVars.FlownDistance],#[flowVars.FlownDistanceunit],#[flowVars.GreatCircleDistance],#[flowVars.GreatCircleDistanceunit],#[flowVars.UnitRate],#[flowVars.WeightFactor],#[flowVars.DistanceFactor],#[flowVars.Cost],#[flowVars.Costcurrency],#[flowVars.CostcurrencyexchangeRate],#[flowVars.MinCost],#[flowVars.MinCostcurrency],#[flowVars.MaxCost],#[flowVars.MaxCostcurrency],#[flowVars.FleetMLW],#[flowVars.FleetMTXW],#[flowVars.FleetMTOW],#[flowVars.DistanceCatalogueFactor],#[flowVars.DistanceType])]]></db:parameterized-query>
+
+                </db:insert>
+                <db:insert config-ref="Oracle_Configuration" doc:name="FLIGHT_COST_VIEWER_Single">
+                    <db:parameterized-query><![CDATA[insert into FLIGHT_COST_VIEWER values(#[flowVars.flightPlanId],#[flowVars.action],#[flowVars.computedTime],#[flowVars.scheduledTimeOfDeparture],#[flowVars.scheduledTimeOfArrival],#[flowVars.airlineIataCode],#[flowVars.flightNumber],#[flowVars.DepartureAirportICAOCode],#[flowVars.DepartureAirportIATACode],#[flowVars.ArrivalAirportICAOCode],#[flowVars.ArrivalAirportIATACode],#[flowVars.aircraftRegistration],#[flowVars.aircraftIcaoType],#[flowVars.MTOW],#[flowVars.MTOWunit],#[flowVars.Routeoption],#[flowVars.Routeinflight],#[flowVars.AtsFplItem15],#[flowVars.TotalAtcChargeCost],#[flowVars.TotalAtcChargeCostcurrency])]]></db:parameterized-query>
+                </db:insert>
+                <logger message="Data Inserted successfully" level="INFO" doc:name="Logger"/>
+
+            </when>
+        </choice>
+        <set-payload value="#[flowVars.xmldata]" doc:name="Set Payload"/>
+        <byte-array-to-object-transformer doc:name="Byte Array to Object"/>
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+        <scatter-gather doc:name="Scatter-Gather">
+            <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="overflyingcharges.txt" host="localhost" port="222" path="data/LidoIntegration/NonVTFiles" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+            <file:outbound-endpoint path="C:\Users\db2admin.bandaru-PC\Music\jetlocalbackup\backup" outputPattern="overflyingchargesbackup.txt" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+        </scatter-gather>
+
+   <exception-strategy ref="exceptionstrategyChoice_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+   </flow>
+
+</mule>
