@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <choice-exception-strategy name="Global_Exception_Strategy">
+        <catch-exception-strategy when="#[exception.causedBy(org.mule.api.expression.ExpressionRuntimeException)||exception.causedBy(org.mule.api.MuleRuntimeException)||exception.causedBy(org.mule.api.expression.ExpressionRuntimeException)]" doc:name="Catch_Exception_Strategy">
+            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            <set-variable variableName="filter" value="#['false']" doc:name="Variable"/>
+            <choice doc:name="Choice">
+                <when expression="#[(sessionVars.errorDetails.size()&gt;=1)||(exception.message.contains('import java.util.*'))||(exception.message.contains('java.sql.*'))]">
+                    <set-variable variableName="errorMessage" value="#[&quot;Error in file started at  &quot;]" doc:name="Validation error"/>
+                    <expression-component doc:name="Expression"><![CDATA[if(exception.message.contains('import java.util.*')){
+sessionVars.errorDetails.add("error");
+}
+if(exception.message.contains(' java.sql.*')){
+sessionVars.errorDetails.add("DataBase error.");
+}
+for(int i=0;i<sessionVars.errorDetails.size();i++){
+flowVars.errorMessage=flowVars.errorMessage+sessionVars.errorDetails[i]+", ";
+}
+]]></expression-component>
+
+                </when>
+                <otherwise>
+                    <set-variable variableName="other errors" value="" doc:name="formate error"/>
+                </otherwise>
+            </choice>
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.errorMessage]]></dw:set-payload>
+            </dw:transform-message>
+            <flow-ref name="tankeringFlow1" doc:name="tankeringFlow1"/>
+         
+        </catch-exception-strategy>
+        <catch-exception-strategy doc:name="Default Exception Strategy">
+            <logger message="#[&quot;error in validation in mule flow &quot;]" level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+</mule>
