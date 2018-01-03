@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
@@ -11,15 +11,16 @@ http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/m
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
-http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
     <file:connector name="File" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\OUT" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
     <file:connector name="File1" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\m" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
     <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="eidiko" password="sarasu10" doc:name="Oracle Configuration"/>
     <sftp:connector name="SFTP" validateConnections="true" autoDelete="false" doc:name="SFTP"/>
-    <wmq:connector name="WMQ" hostName="localhost" port="1415" queueManager="a" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1416" queueManager="b" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
     <flow name="flightlistFlow">
-        <wmq:inbound-endpoint queue="remote" connector-ref="WMQ" doc:name="getting message from MQ">
+        <wmq:inbound-endpoint queue="local" connector-ref="WMQ" doc:name="getting message from MQ">
             <wmq:transaction action="NONE"/>
         </wmq:inbound-endpoint>
         <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="payload is stored in the form of string in var"/>
@@ -41,7 +42,7 @@ flowVars.MasterOffice1=s.substring(34,37);
 flowVars.ResponsibleOffice1=s.substring(37,40);
 flowVars.ATCCallsign1=s.substring(40,49);
 flowVars.Separator1=s.substring(49,50);
-if(flowVars.AirlineDesignator1.matches(".*[1-9].*")){
+if(flowVars.AirlineDesignator1.matches(".*[a-zA-Z,1-9].*")){
 flowVars.AirlineDesignator=flowVars.AirlineDesignator1;
 }
 else{
@@ -141,18 +142,19 @@ b=b+42;
 }
 
 ]]></expression-component>
-                <foreach collection="#[flowVars.array]" doc:name="For Each">
-                    <expression-component doc:name="validations"><![CDATA[flowVars.AirlineDesignator1=s.substring(0,2);
-flowVars.FlightNumber1=s.substring(2,7);
-flowVars.OperationalSuffix1=s.substring(7,8);
-flowVars.DepartureAirport1=s.substring(8,11);
-flowVars.DestinationAirport1=s.substring(11,14);
-flowVars.AircraftOperator1=s.substring(14,17);
-flowVars.MasterOffice1=s.substring(17,20);
-flowVars.ResponsibleOffice1=s.substring(20,23);
-flowVars.ATCCallsign1=s.substring(23,32);
-flowVars.Separator1=s.substring(32,33);
-if(flowVars.AirlineDesignator1.matches(".*[1-9].*")){
+                <ee:multi-transactional action="BEGIN_OR_JOIN" doc:name="Transactional">
+                    <foreach collection="#[flowVars.array]" doc:name="For Each">
+                        <expression-component doc:name="validations"><![CDATA[flowVars.AirlineDesignator1=payload.substring(0,3);
+flowVars.FlightNumber1=payload.substring(3,8);
+flowVars.OperationalSuffix1=payload.substring(8,9);
+flowVars.DepartureAirport1=payload.substring(17,20);
+flowVars.DestinationAirport1=payload.substring(20,23);
+flowVars.AircraftOperator1=payload.substring(23,26);
+flowVars.MasterOffice1=payload.substring(26,29);
+flowVars.ResponsibleOffice1=payload.substring(29,32);
+flowVars.ATCCallsign1=payload.substring(32,41);
+flowVars.Separator1=payload.substring(41,42);
+if(flowVars.AirlineDesignator1.matches(".*[a-zA-Z,1-9].*")){
 flowVars.AirlineDesignator=flowVars.AirlineDesignator1;
 }
 else{
@@ -212,28 +214,30 @@ flowVars.Separator=flowVars.Separator1;
 else{
 flowVars.error='Separator';
 }]]></expression-component>
-                    <expression-component doc:name="date validation"><![CDATA[String s=flowVars.data;
+                        <expression-component doc:name="date validation"><![CDATA[
 import java.util.*;
  import java.text.*;
 SimpleDateFormat sdff = new SimpleDateFormat("dd");
 sdff.setLenient(false);
 flowVars.date='1';
-Date date = sdff.parse(s.substring(9,11));
-flowVars.DateofOriginUTC=s.substring(9,11);
+Date date = sdff.parse(payload.substring(9,11));
+flowVars.DateofOriginUTC=payload.substring(9,11);
 flowVars.date='2';
-Date date = sdff.parse(s.substring(11,13));
-flowVars.DateofOriginlocal=s.substring(11,13);
+Date date = sdff.parse(payload.substring(11,13));
+flowVars.DateofOriginlocal=payload.substring(11,13);
 flowVars.date='3';
-Date date = sdff.parse(s.substring(13,15));
-flowVars.DateofOperationUTC=s.substring(13,15);
+Date date = sdff.parse(payload.substring(13,15));
+flowVars.DateofOperationUTC=payload.substring(13,15);
 flowVars.date='4';
-Date date = sdff.parse(s.substring(15,17));
-flowVars.DateofOperationlocal=s.substring(15,17);
+Date date = sdff.parse(payload.substring(15,17));
+flowVars.DateofOperationlocal=payload.substring(15,17);
 ]]></expression-component>
- <db:insert config-ref="Oracle_Configuration" doc:name="Database">
-                        <db:parameterized-query><![CDATA[insert INTO LIDO values(#[flowVars.Infotype],#[flowVars.Amountflightlegs],#[flowVars.AirlineDesignator],#[flowVars.FlightNumber],#[flowVars.OperationalSuffix],#[flowVars.DateofOriginUTC],#[flowVars.DateofOriginlocal],#[flowVars.DateofOperationUTC],#[DateofOperationlocal],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.AircraftOperator],#[flowVars.MasterOffice],#[flowVars.ResponsibleOffice],#[flowVars.ATCCallsign],#[flowVars.Separator])]]></db:parameterized-query>
-            </db:insert>
-                </foreach>
+                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                            <db:parameterized-query><![CDATA[insert INTO LIDO values(#[flowVars.Infotype],#[flowVars.Amountflightlegs],#[flowVars.AirlineDesignator],#[flowVars.FlightNumber],#[flowVars.OperationalSuffix],#[flowVars.DateofOriginUTC],#[flowVars.DateofOriginlocal],#[flowVars.DateofOperationUTC],#[DateofOperationlocal],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.AircraftOperator],#[flowVars.MasterOffice],#[flowVars.ResponsibleOffice],#[flowVars.ATCCallsign],#[flowVars.Separator])]]></db:parameterized-query>
+                        </db:insert>
+                    </foreach>
+                </ee:multi-transactional>
+
                 <logger message="multiple" level="INFO" doc:name="Logger"/>
             </when>
             <otherwise>
