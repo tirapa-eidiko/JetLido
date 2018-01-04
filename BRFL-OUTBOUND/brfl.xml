@@ -1,0 +1,762 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:wmq="http://www.mulesoft.org/schema/mule/ee/wmq" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/wmq http://www.mulesoft.org/schema/mule/ee/wmq/current/mule-wmq-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\re" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File1" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\re" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File2" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\m" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <file:connector name="File3" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\JET\FromLido Outbound" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+    <sftp:connector name="SFTP" validateConnections="true" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP1" validateConnections="true" autoDelete="false" doc:name="SFTP"/>
+    <sftp:connector name="SFTP2" validateConnections="true" autoDelete="false" doc:name="SFTP"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="xe" user="eidiko" password="sarasu10" doc:name="Oracle Configuration"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    <file:connector name="File4" writeToDirectory="C:\Users\db2admin.bandaru-PC\Desktop\ravi\JET-LIDO\LIDO\ERROR" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <wmq:connector name="WMQ" hostName="localhost" port="1416" queueManager="b" channel="ravi" username="db2admin" password="sarasu10" transportType="BINDINGS_MQ" validateConnections="true" doc:name="WMQ"/>
+    <flow name="brflFlow">
+        <wmq:inbound-endpoint queue="local" connector-ref="WMQ" doc:name="WMQ">
+            <wmq:transaction action="NONE"/>
+        </wmq:inbound-endpoint>
+        <set-variable variableName="data" value="#[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+        <set-payload value="#[message.payloadAs(java.lang.String)]" doc:name="Set Payload"/>
+        <expression-component doc:name="Header validations"><![CDATA[
+flowVars.header=payload.substring(0,77);
+if(flowVars.header.contains('BRFL')){
+flowVars.Body=payload;
+flowVars.BRFL=payload;
+}
+else if(flowVars.header.contains('SLOT')){
+flowVars.SLOT=payload;
+}
+else if(flowVars.header.contains('AFTN')){
+flowVars.AFTN=payload;
+}
+else if(flowVars.header.contains('WABI')){
+flowVars.WABI=payload;
+}
+else if(flowVars.header.contains('ATCF')){
+flowVars.ATCF=payload;
+}
+else if(flowVars.header.contains('LOCK')){
+flowVars.LOCK=payload;
+}
+else if(flowVars.header.contains('APLI')){
+flowVars.APLI=payload;
+}
+else {
+flowVars.error='InfoType is Wrong';
+}
+
+
+]]></expression-component>
+        <expression-component doc:name="Expression"><![CDATA[flowVars.modified=payload;
+flowVars.error='null';
+flowVars.Infotype1=payload.substring(0,4);
+if(flowVars.Infotype1.matches(".*[a-zA-Z].*")){
+flowVars.Infotype=flowVars.Infotype1;
+}
+else{
+flowVars.error='InfoType';
+}
+flowVars.AirlineDesignator1=flowVars.modified.substring(4,7);
+if(flowVars.AirlineDesignator1.matches(".*[a-zA-Z,1-9].*")){
+flowVars.AirlineDesignator=flowVars.AirlineDesignator1;
+}
+else{
+flowVars.error='AirlineDesignator';
+}
+flowVars.FlightNumber1=flowVars.modified.substring(7,12);
+if(flowVars.FlightNumber1.matches(".*[a-zA-Z,1-9].*")){
+flowVars.FlightNumber=flowVars.FlightNumber1;
+}
+else{
+flowVars.error='FlightNumber';
+}
+flowVars.OperationalSuffix1=flowVars.modified.substring(12,13);
+if(flowVars.OperationalSuffix1.matches(".*[a-zA-Z].*") || flowVars.OperationalSuffix1==" "){
+flowVars.OperationalSuffix=flowVars.OperationalSuffix1;
+}
+else{
+flowVars.error='OperationalSuffix';
+}
+flowVars.DepartureAirport1=flowVars.modified.substring(49,54);
+if(flowVars.DepartureAirport1.matches(".*[a-zA-Z].*")){
+flowVars.DepartureAirport=flowVars.DepartureAirport1;
+}
+else{
+flowVars.error='DepartureAirport';
+}
+flowVars.DestinationAirport1=flowVars.modified.substring(54,59);
+if(flowVars.DestinationAirport1.matches(".*[a-zA-Z].*")){
+flowVars.DestinationAirport=flowVars.DestinationAirport1;
+}
+else{
+flowVars.error='DestinationAirport';
+}
+flowVars.MasterOffice1=flowVars.modified.substring(59,62);
+if(flowVars.MasterOffice1.matches(".*[a-zA-Z].*") || flowVars.MasterOffice1=="   "){
+flowVars.MasterOffice=flowVars.MasterOffice1;
+}
+else{
+flowVars.error='MasterOffice';
+}
+flowVars.ResponsibleOffice1=flowVars.modified.substring(62,65);
+if(flowVars.ResponsibleOffice1.matches(".*[a-zA-Z].*") || flowVars.ResponsibleOffice1=="   "){
+flowVars.ResponsibleOffice=flowVars.ResponsibleOffice1;
+}
+else{
+flowVars.error='ResponsibleOffice';
+}
+flowVars.FlightDuplicationNo1=flowVars.modified.substring(65,67);
+if(flowVars.FlightDuplicationNo1.matches(".*[a-zA-Z,1-9].*") || flowVars.FlightDuplicationNo1==" "){
+flowVars.FlightDuplicationNo=flowVars.FlightDuplicationNo1;
+}
+else{
+flowVars.error='FlightDuplicationNo';
+}
+flowVars.BriefingSequenceNo1=flowVars.modified.substring(67,69);
+if(flowVars.BriefingSequenceNo1.matches(".*[a-zA-Z,1-9].*") || flowVars.BriefingSequenceNo1==" "){
+flowVars.BriefingSequenceNo=flowVars.BriefingSequenceNo1;
+}
+else{
+flowVars.error='BriefingSequenceNo';
+}
+flowVars.TransmissionNo1=flowVars.modified.substring(69,71);
+if(flowVars.TransmissionNo1.matches(".*[a-zA-Z,1-9].*") || flowVars.TransmissionNo1==" "){
+flowVars.TransmissionNo=flowVars.TransmissionNo1;
+}
+else{
+flowVars.error='TransmissionNo';
+}
+flowVars.AircraftOperator=flowVars.modified.substring(71,74);
+flowVars.Separator=flowVars.modified.substring(74,77);
+]]></expression-component>
+        <expression-filter expression="#[flowVars.error=='null']" doc:name="Expression"/>
+        <expression-component doc:name="date validation"><![CDATA[import java.util.*;
+ import java.text.*;
+SimpleDateFormat sdff = new SimpleDateFormat("ddMMMyyyy");
+sdff.setLenient(false);
+flowVars.DateofOrigin1=flowVars.modified.substring(13,22);
+flowVars.DateofOrigin2=flowVars.modified.substring(22,31);
+flowVars.DateofOperation1=flowVars.modified.substring(31,40);
+flowVars.DateofOperation2=flowVars.modified.substring(40,49);
+flowVars.daterror='1';
+Date date = sdff.parse(flowVars.DateofOrigin1);
+flowVars.DateofOriginUTC=flowVars.DateofOrigin1;
+flowVars.daterror='2';
+Date date = sdff.parse(flowVars.DateofOrigin2);
+flowVars.DateofOriginlocal=flowVars.DateofOrigin2;
+flowVars.daterror='3';
+Date date = sdff.parse(flowVars.DateofOperation1);
+flowVars.DateofOperationUTC=flowVars.DateofOperation1;
+flowVars.daterror='4';
+Date date = sdff.parse(flowVars.DateofOperation2);
+flowVars.DateofOperation(local)=flowVars.DateofOperation2;
+flowVars.daterror='null';
+]]></expression-component>
+        <scatter-gather doc:name="Scatter-Gather">
+            <choice doc:name="Choice">
+                <when expression="payload.contains('BRFL')">
+                    <expression-component doc:name="file name formation"><![CDATA[flowVars.freeflight1=payload.split(' N  A  V  I  G  A  T  I  O  N    L  O  G ');
+flowVars.freeflight=flowVars.freeflight1[0];
+
+flowVars.outheader=flowVars.DateofOriginUTC+flowVars.AirlineDesignator.trim()+flowVars.DestinationAirport.trim()+flowVars.DepartureAirport.trim()+flowVars.FlightDuplicationNo;]]></expression-component>
+                    <scatter-gather doc:name="Scatter-Gather">
+                        <processor-chain>
+                            <set-payload value="#[flowVars.freeflight]" doc:name="Set Payload"/>
+                            <sftp:outbound-endpoint exchange-pattern="request-response" connector-ref="SFTP" outputPattern="#[flowVars.outheader+'.txt']" host="localhost" port="24" path="/ravi/JET-LIDO/JET/FromLido Outbound/Freeflight" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                        </processor-chain>
+                        <processor-chain>
+                            <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                            <sftp:outbound-endpoint exchange-pattern="request-response" connector-ref="SFTP" outputPattern="#[flowVars.outheader+'.txt']" host="localhost" port="24" path="/ravi/JET-LIDO/JET/FromLido Outbound/OFP" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                        </processor-chain>
+                        <processor-chain>
+                            <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                            <sftp:outbound-endpoint exchange-pattern="request-response" connector-ref="SFTP" outputPattern="#[flowVars.outheader+'.txt']" host="localhost" port="24" path="/ravi/JET-LIDO/JET/FromLido Outbound/AVIASO" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                        </processor-chain>
+                    </scatter-gather>
+                </when>
+                <otherwise>
+                    <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                        <db:parameterized-query><![CDATA[insert INTO LIDO_MAINHEADER values(#[flowVars.AirlineDesignator],#[flowVars.FlightNumber],#[flowVars.OperationalSuffix],#[flowVars.DateofOriginUTC],#[flowVars.DateofOriginlocal],#[flowVars.DateofOperationUTC],#[flowVars.DateofOperationlocal],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.MasterOffice],#[flowVars.ResponsibleOffice],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.AircraftOperator],#[flowVars.Separator],current_Timestamp)]]></db:parameterized-query>
+                    </db:insert>
+                    <logger message="inserted" level="INFO" doc:name="Logger"/>
+                </otherwise>
+            </choice>
+            <choice doc:name="checking error raised?">
+                <when expression="flowVars.error=='null' &amp;&amp;  flowVars.daterror=='null'">
+                    <choice doc:name="according to INFOTYPE">
+                        <when expression="flowVars.WABI!=null;">
+                            <logger message="#[payload.substring(0,77)]" level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="WABI validations"><![CDATA[flowVars.unitofmeasure=flowVars.modified.substring(77,78);
+flowVars.fuelorderstatus=flowVars.modified.substring(78,80);
+flowVars.plannedtaxifuel=flowVars.modified.substring(80,84);
+flowVars.plannedtripfuel=flowVars.modified.substring(84,90);
+flowVars.blockedfuel=flowVars.modified.substring(90,96);
+flowVars.plannedtriptime=flowVars.modified.substring(96,100);
+flowVars.plannedtaxitime=flowVars.modified.substring(100,104);
+flowVars.estimatedtotalflighttime=flowVars.modified.substring(104,108);
+flowVars.Tankcapacity=flowVars.modified.substring(108,114);
+flowVars.acRegistration=flowVars.modified.substring(114,123);
+flowVars.ReclearenceIndicator=flowVars.modified.substring(123,124);
+flowVars.maxlandingweight=flowVars.modified.substring(124,130);
+flowVars.maxtakeoffweight=flowVars.modified.substring(130,136);
+flowVars.maxtaxiweight=flowVars.modified.substring(136,142);
+flowVars.plannedZFW=flowVars.modified.substring(142,148);
+flowVars.maxZFW=flowVars.modified.substring(148,154);
+flowVars.supplierGravity=flowVars.modified.substring(154,160);
+flowVars.RemainingGravity=flowVars.modified.substring(160,166);
+flowVars.DispatcherRemark=flowVars.modified.substring(166,246);
+flowVars.FuelTrunkIndicator=flowVars.modified.substring(246,247);
+flowVars.FuelTrunkStandBy=flowVars.modified.substring(247,248);
+flowVars.RefuelingQuantity=flowVars.modified.substring(248,254);
+flowVars.WABIREvisionNumber=flowVars.modified.substring(254,256);
+flowVars.OFPNumber=flowVars.modified.substring(256,258);
+flowVars.PlannedLoad=flowVars.modified.substring(258,264);
+flowVars.NegativeZFW=flowVars.modified.substring(264,270);
+flowVars.positiveZFW=flowVars.modified.substring(270,276);
+flowVars.seperator2=flowVars.modified.substring(276,280);
+flowVars.reducedLandingweight=flowVars.modified.substring(280,288);
+flowVars.ReducedTakeoffweight=flowVars.modified.substring(288,296);]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO LIDO_WABI values(#[flowVars.Infotype],#[flowVars.unitofmeasure],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.fuelorderstatus],#[flowVars.plannedtaxifuel],#[flowVars.plannedtripfuel],#[flowVars.blockedfuel],#[flowVars.plannedtriptime],#[flowVars.plannedtaxitime],#[flowVars.estimatedtotalflighttime],#[flowVars.Tankcapacity],#[flowVars.acRegistration],#[flowVars.ReclearenceIndicator],#[flowVars.maxlandingweight],#[flowVars.maxtakeoffweight],#[flowVars.maxtaxiweight],#[flowVars.plannedZFW],#[flowVars.maxZFW],#[flowVars.supplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTrunkIndicator],#[flowVars.FuelTrunkStandBy],#[flowVars.RefuelingQuantity],#[flowVars.WABIREvisionNumber],#[flowVars.OFPNumber],#[flowVars.PlannedLoad],#[flowVars.NegativeZFW],#[flowVars.positiveZFW],#[flowVars.seperator2],#[flowVars.reducedLandingweight],#[flowVars.ReducedTakeoffweight],current_Timestamp)]]></db:parameterized-query>
+                                </db:insert>
+                                <processor-chain>
+                                    <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                                    <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[flowVars.DateofOriginUTC].txt" host="localhost" port="24" path="/ravi/JET-LIDO/OUT" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                                </processor-chain>
+                            </scatter-gather>
+                        </when>
+                        <when expression="flowVars.APLI!=null;">
+                            <logger level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="adding to array"><![CDATA[flowVars.msg=payload.substring(77,201);
+flowVars.remainag=payload.substring(201,payload.length());
+flowVars.array=new java.util.ArrayList();
+flowVars.loop=payload.substring(201,payload.length());
+String p=flowVars.loop;
+int b=0;
+for(int i=0;i<Math.round(p.length()/68)-1;i++){
+array.add(p.substring(0+b,68+b));
+b=b+68;
+}
+flowVars.last1=payload.substring(payload.lastIndexOf('>',payload.length()-1),payload.length());
+flowVars.Last2=flowVars.last1.replace('>','');
+flowVars.last=flowVars.Last2.split('       ');]]></expression-component>
+                            <expression-component doc:name="APLI Expression "><![CDATA[payload=flowVars.msg;
+flowVars.VERSION=payload.substring(0,4);
+flowVars.BLOCK_TIME_INDICATOR=payload.substring(4,5);
+flowVars.OFP_NUMBER=payload.substring(5,8);
+flowVars.RCL_NUMBER=payload.substring(8,10);
+flowVars.ETOPS_NUMBER=payload.substring(10,11);
+flowVars.STD_ETD_DATE_UTC=payload.substring(11,20);
+flowVars.STD_ETD_TIME_UTC=payload.substring(20,24);
+flowVars.SCHEDULED_BLOCK_TIME=payload.substring(24,28);
+flowVars.FLIGHT_TIME_DEP_DEST=payload.substring(28,32);
+flowVars.FLIGHT_TIME_DEP_DEP=payload.substring(32,36);
+flowVars.FLIGHT_TIME_DEST_ALT1=payload.substring(36,40);
+flowVars.FLIGHT_TIME_DEST_ALT2=payload.substring(40,44);
+flowVars.FLIGHT_TIME_DEST_ALT3=payload.substring(44,48);
+flowVars.FLIGHT_TIME_DEST_ALT4=payload.substring(48,52);
+flowVars.FLIGHT_TIME_DEP_RAP=payload.substring(52,56);
+flowVars.FLIGHT_TIME_RAP_RAP_ALT=payload.substring(56,60);
+flowVars.SEPARATOR1=payload.substring(60,68);
+flowVars.NUMBER_OF_DESTINATION=payload.substring(68,69);
+flowVars.NUMBER_OF_DEPARTURE=payload.substring(69,70);
+flowVars.NUMBER_OF_DESTINATION_ALTS=payload.substring(70,72);
+flowVars.NUM_OF_DEST_ADDITIONAL_ALTS=payload.substring(72,74);
+flowVars.NUMBER_OF_DEPARTURE_ALTS=payload.substring(74,76);
+flowVars.NUM_OF_ENROUTE_AIRPORTS=payload.substring(76,80);
+flowVars.NUM_OF_ETOPS_AIRPORTS=payload.substring(80,81);
+flowVars.RECLEARANCE_AIRPORT=payload.substring(81,82);
+flowVars.NUM_OF_RECLEARANCE_ALTS=payload.substring(82,84);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_1=payload.substring(84,87);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_2=payload.substring(88,89);
+flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS=payload.substring(87,88);
+flowVars.RECLEARNCEFUELENROUTEAIRPORTNO=payload.substring(88,89);
+flowVars.SEPARATOR2=payload.substring(92,101);
+flowVars.TOTAL_AIRPORTS=payload.substring(101,105);
+flowVars.TOTAL_FIRS=payload.substring(105,107);
+flowVars.REGISTRATION=payload.substring(107,116);
+flowVars.SEPARATOR3=payload.substring(116,124);]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <foreach collection="#[flowVars.array]" doc:name="For Each">
+                                    <choice doc:name="Choice">
+                                        <when expression="payload.contains('info');">
+                                            <expression-component doc:name="info  tag data"><![CDATA[flowVars.DestinationICAO=payload.substring(0,4);
+flowVars.DestinationIATA=payload.substring(4,9);
+flowVars.SEPARATOR1=payload.substring(9,12);
+flowVars.ETOPS_INDICATOR=payload.substring(12,13);
+flowVars.TIME_INDICATOR=payload.substring(12,13);
+flowVars.WX_VALIDITY_FROM_DATE_UTC=payload.substring(13,22);
+flowVars.WX_VALIDITY_FROM_TIME_UTC=payload.substring(22,26);
+flowVars.WX_VALIDITY_TILL_DATE_UTC=payload.substring(26,35);
+flowVars.WX_VALIDITY_TILL_TIME_UTC=payload.substring(35,39);
+flowVars.SA_NUMBER=payload.substring(39,41);
+flowVars.FC_NUMBER=payload.substring(41,43);
+flowVars.FT_NUMBER=payload.substring(43,45);
+flowVars.SEPARATOR2=payload.substring(45,55);
+flowVars.INFO=payload.substring(55,61);
+flowVars.DAT='';
+flowVars.INFO1=payload.substring(61,68);]]></expression-component>
+                                            <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                <db:parameterized-query><![CDATA[insert INTO APLIREF_AIRPORT values(#[flowVars.DestinationICAO],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SEPARATOR1],#[flowVars.ETOPS_INDICATOR],#[flowVars.TIME_INDICATOR],#[flowVars.WX_VALIDITY_FROM_DATE_UTC],#[flowVars.WX_VALIDITY_FROM_TIME_UTC],#[flowVars.WX_VALIDITY_TILL_DATE_UTC],#[flowVars.WX_VALIDITY_TILL_TIME_UTC],#[flowVars.SA_NUMBER],#[flowVars.FC_NUMBER],#[flowVars.FT_NUMBER],#[flowVars.SEPARATOR2],#[flowVars.INFO],#[flowVars.DAT],#[flowVars.INFO1],current_Timestamp)]]></db:parameterized-query>
+                                            </db:insert>
+                                        </when>
+                                        <otherwise>
+                                            <logger message="not a record" level="INFO" doc:name="Logger"/>
+                                        </otherwise>
+                                    </choice>
+                                </foreach>
+                                <foreach collection="#[flowVars.last]" doc:name="For Each">
+                                    <expression-component doc:name="FIR data"><![CDATA[flowVars.FIR_URI=payload.substring(0,4);
+flowVars.SIGMENTVALIDITYFROMDATE_UTC=payload.substring(4,13);
+flowVars.SIGMENTVALIDITYFROM_TIME_UTC=payload.substring(13,17);
+flowVars.SIGMENTVALIDITYTILLDATE_UTC=payload.substring(17,26);
+flowVars.SIGMENTVALIDITYTILL_TIME_UTC=payload.substring(26,30);
+flowVars.NUMBEROFSEGMENTS=payload.substring(30,31);
+flowVars.separator3="       ";]]></expression-component>
+                                    <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                        <db:parameterized-query><![CDATA[insert INTO APLIREF_FIR values(#[flowVars.FIR_URI],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SIGMENTVALIDITYFROMDATE_UTC],#[flowVars.SIGMENTVALIDITYFROM_TIME_UTC],#[flowVars.SIGMENTVALIDITYTILLDATE_UTC],#[flowVars.SIGMENTVALIDITYTILL_TIME_UTC],#[flowVars.NUMBEROFSEGMENTS],#[flowVars.separator3],current_Timestamp)]]></db:parameterized-query>
+                                    </db:insert>
+                                </foreach>
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO APLI values(#[flowVars.INFO_TYPE],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.VERSION],#[flowVars.BLOCK_TIME_INDICATOR],#[flowVars.OFP_NUMBER],#[flowVars.RCL_NUMBER],#[flowVars.ETOPS_NUMBER],#[flowVars.STD_ETD_DATE_UTC],#[flowVars.STD_ETD_TIME_UTC],#[flowVars.SCHEDULED_BLOCK_TIME],#[flowVars.FLIGHT_TIME_DEP_DEST],#[flowVars.FLIGHT_TIME_DEP_DEP],#[flowVars.FLIGHT_TIME_DEST_ALT1],#[flowVars.FLIGHT_TIME_DEST_ALT2],#[flowVars.FLIGHT_TIME_DEST_ALT3],#[flowVars.FLIGHT_TIME_DEST_ALT4],#[flowVars.FLIGHT_TIME_DEP_RAP],#[flowVars.FLIGHT_TIME_RAP_RAP_ALT],#[flowVars.SEPARATOR1],#[flowVars.NUMBER_OF_DESTINATION],#[flowVars.NUMBER_OF_DEPARTURE],#[flowVars.NUMBER_OF_DESTINATION_ALTS],#[flowVars.NUMBER_OF_DEPARTURE_ALTS],#[flowVars.NUM_OF_ENROUTE_AIRPORTS],#[flowVars.NUM_OF_ETOPS_AIRPORTS],#[flowVars.RECLEARANCE_AIRPORT],#[flowVars.NUM_OF_RECLEARANCE_ALTS],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_1],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_2],#[flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS],#[flowVars.RECLEARNCEFUELENROUTEAIRPORTNO],#[flowVars.SEPARATOR2],#[flowVars.TOTAL_AIRPORTS],#[flowVars.TOTAL_FIRS],#[flowVars.REGISTRATION],#[flowVars.SEPARATOR3],current_Timestamp)]]></db:parameterized-query>
+                                </db:insert>
+                            </scatter-gather>
+                        </when>
+                        <when expression="flowVars.AFTN!=null;">
+                            <logger level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="AFTN Expression"><![CDATA[flowVars.confirmationindicator=flowVars.modified.substring(77,78);
+flowVars.LengthoffiledATCPlan=flowVars.modified.substring(78,82);
+flowVars.OFPNumber=flowVars.modified.substring(82,84);
+flowVars.RCLNumber=flowVars.modified.substring(84,86);
+flowVars.EROpsNumber=flowVars.modified.substring(86,88);
+flowVars.FiledATCplan=flowVars.modified.substring(88,flowVars.modified.length());]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO LIDO_AFTN values(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.confirmationindicator],#[flowVars.LengthoffiledATCPlan],#[flowVars.OFPNumber],#[flowVars.RCLNumber],#[flowVars.EROpsNumber],#[flowVars.FiledATCplan],current_Timestamp)]]></db:parameterized-query>
+                                </db:insert>
+                                <processor-chain>
+                                    <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                                    <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[flowVars.DateofOriginUTC].txt" host="localhost" port="24" path="/ravi/JET-LIDO/OUT/BACKUP" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                                </processor-chain>
+                            </scatter-gather>
+                        </when>
+                        <when expression="flowVars.ATCF!=null;">
+                            <logger level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="ATCF Expression"><![CDATA[flowVars.confirmationindicator=flowVars.modified.substring(77,78);
+flowVars.LengthoffiledATCPlan=flowVars.modified.substring(78,82);
+flowVars.OFPNumber=flowVars.modified.substring(82,84);
+flowVars.RCLNumber=flowVars.modified.substring(84,86);
+flowVars.EROpsNumber=flowVars.modified.substring(86,88);
+flowVars.FiledATCplan=flowVars.modified.substring(88,flowVars.modified.length());]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO LIDO_ATCF values(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.confirmationindicator],#[flowVars.LengthoffiledATCPlan],#[flowVars.OFPNumber],#[flowVars.RCLNumber],#[flowVars.EROpsNumber],#[flowVars.FiledATCplan],current_Timestamp)]]></db:parameterized-query>
+                                </db:insert>
+                                <processor-chain>
+                                    <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                                    <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[flowVars.DateofOriginUTC].txt" host="localhost" port="24" path="/ravi/JET-LIDO/OUT/BACKUP" responseTimeout="10000" doc:name="SFTP"/>
+                                </processor-chain>
+                            </scatter-gather>
+                        </when>
+                        <when expression="flowVars.SLOT!=null;">
+                            <logger level="INFO" doc:name="Logger"/>
+                            <expression-component doc:name="SLOT validation and assigning value to var "><![CDATA[flowVars.ndata=payload.substring(77,payload.length());]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO SLOT values(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.ndata],current_Timestamp)]]></db:parameterized-query>
+                                </db:insert>
+                                <processor-chain>
+                                    <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+                                    <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[flowVars.DateofOriginUTC].txt" host="localhost" port="24" path="/ravi/JET-LIDO/OUT/BACKUP" user="tester" password="password" responseTimeout="10000" doc:name="SFTP"/>
+                                </processor-chain>
+                            </scatter-gather>
+                        </when>
+                        <when expression="flowVars.LOCK!=null;">
+                            <expression-component doc:name="Expression"><![CDATA[flowVars.CONFIRMATION_INDICATOR=payload.substring(81,82);
+flowVars.RECALCULATION_INDICATOR_AOS=payload.substring(82,83);
+flowVars.SEPARATOR2=payload.substring(83,92);
+]]></expression-component>
+                            <scatter-gather doc:name="Scatter-Gather">
+                                <choice tracking:enable-default-events="true" doc:name="Choice">
+                                    <when expression="payload.contains('WABI') &amp;&amp; payload.contains('SLOT') &amp;&amp; payload.contains('ATCF') &amp;&amp; payload.contains('APLI')">
+                                        <set-variable variableName="ravi" value="#[payload.split('ATCFAB  8216 30NOV201630NOV201630NOV201630NOV2016TXL  WAW  FRABER010209AB    ')]" doc:name="Variable"/>
+                                        <expression-component doc:name="Expression"><![CDATA[flowVars.AT1=flowVars.ravi[1].split('APLIAB  8216 30NOV201630NOV201630NOV201630NOV2016TXL  WAW  FRABER010209AB    V103N00200030NOV2016160500800069   ');
+flowVars.AT=flowVars.AT1[0];
+flowVars.W=payload.substring(169,388);
+flowVars.S=payload.substring(465,488);
+flowVars.A=flowVars.ravi[1].replace(flowVars.AT,' ');
+flowVars.remain1=flowVars.A.substring(flowVars.A.lastIndexOf('>',flowVars.A.length()-1),flowVars.A.length());
+flowVars.remain=flowVars.remain1.replace('>','');
+flowVars.last=flowVars.remain.split('       ');
+payload=flowVars.A.substring(0,124);
+flowVars.VERSION=payload.substring(0,4);
+flowVars.BLOCK_TIME_INDICATOR=payload.substring(4,5);
+flowVars.OFP_NUMBER=payload.substring(5,8);
+flowVars.RCL_NUMBER=payload.substring(8,10);
+flowVars.ETOPS_NUMBER=payload.substring(10,11);
+flowVars.STD_ETD_DATE_UTC=payload.substring(11,20);
+flowVars.STD_ETD_TIME_UTC=payload.substring(20,24);
+flowVars.SCHEDULED_BLOCK_TIME=payload.substring(24,28);
+flowVars.FLIGHT_TIME_DEP_DEST=payload.substring(28,32);
+flowVars.FLIGHT_TIME_DEP_DEP=payload.substring(32,36);
+flowVars.FLIGHT_TIME_DEST_ALT1=payload.substring(36,40);
+flowVars.FLIGHT_TIME_DEST_ALT2=payload.substring(40,44);
+flowVars.FLIGHT_TIME_DEST_ALT3=payload.substring(44,48);
+flowVars.FLIGHT_TIME_DEST_ALT4=payload.substring(48,52);
+flowVars.FLIGHT_TIME_DEP_RAP=payload.substring(52,56);
+flowVars.FLIGHT_TIME_RAP_RAP_ALT=payload.substring(56,60);
+flowVars.SEPARATOR1=payload.substring(60,68);
+flowVars.NUMBER_OF_DESTINATION=payload.substring(68,69);
+flowVars.NUMBER_OF_DEPARTURE=payload.substring(69,70);
+flowVars.NUMBER_OF_DESTINATION_ALTS=payload.substring(70,72);
+flowVars.NUM_OF_DEST_ADDITIONAL_ALTS=payload.substring(72,74);
+flowVars.NUMBER_OF_DEPARTURE_ALTS=payload.substring(74,76);
+flowVars.NUM_OF_ENROUTE_AIRPORTS=payload.substring(76,80);
+flowVars.NUM_OF_ETOPS_AIRPORTS=payload.substring(80,81);
+flowVars.RECLEARANCE_AIRPORT=payload.substring(81,82);
+flowVars.NUM_OF_RECLEARANCE_ALTS=payload.substring(82,84);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_1=payload.substring(84,87);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_2=payload.substring(88,89);
+flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS=payload.substring(87,88);
+flowVars.RECLEARNCEFUELENROUTEAIRPORTNO=payload.substring(88,89);
+flowVars.SEPARATOR2=payload.substring(92,101);
+flowVars.TOTAL_AIRPORTS=payload.substring(101,105);
+flowVars.TOTAL_FIRS=payload.substring(105,107);
+flowVars.REGISTRATION=payload.substring(107,116);
+flowVars.SEPARATOR3=payload.substring(116,124);
+
+]]></expression-component>
+                                        <scatter-gather doc:name="Scatter-Gather">
+                                            <processor-chain>
+                                                <expression-component doc:name="SLOT"><![CDATA[flowVars.Infotype='SLOT';
+flowVars.ndata=flowVars.S;]]></expression-component>
+                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                    <db:parameterized-query><![CDATA[insert INTO SLOT values(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOrigin(UTC)],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.ndata],current_Timestamp)]]></db:parameterized-query>
+                                                </db:insert>
+                                            </processor-chain>
+                                            <processor-chain>
+                                                <expression-component doc:name="ATCF"><![CDATA[flowVars.Infotype='ATCF';
+flowVars.AT1=flowVars.ravi[1].split('APLIAB  8687 30NOV201630NOV201630NOV201630NOV2016BLQ  DUS  FRABER010313AB    V103N00200030NOV2016160001200128 ');
+flowVars.AT=flowVars.AT1[0];
+flowVars.confirmationindicator=flowVars.AT.substring(0,1);
+flowVars.LengthoffiledATCPlan=flowVars.AT.substring(1,5);
+flowVars.OFPNumber=flowVars.AT.substring(5,7);
+flowVars.RCLNumber=flowVars.AT.substring(7,9);
+flowVars.EROpsNumber=flowVars.AT.substring(9,11);
+flowVars.FiledATCplan=flowVars.AT.substring(11,flowVars.modified.length());]]></expression-component>
+                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                    <db:parameterized-query><![CDATA[insert INTO LIDO_ATCFvalues(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOrigin(UTC)],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.confirmationindicator],#[flowVars.LengthoffiledATCPlan],#[flowVars.OFPNumber],#[flowVars.RCLNumber],#[flowVars.EROpsNumber],#[flowVars.FiledATCplan],current_Timestamp)]]></db:parameterized-query>
+                                                </db:insert>
+                                            </processor-chain>
+                                            <processor-chain>
+                                                <expression-component doc:name="APLI"><![CDATA[flowVars.Infotype='APLI';
+flowVars.A=flowVars.ravi[1].replace(flowVars.AT,' ');
+flowVars.remain1=flowVars.A.substring(flowVars.A.lastIndexOf('>',flowVars.A.length()-1),flowVars.A.length());
+flowVars.remain=flowVars.remain1.replace('>','');
+flowVars.last=flowVars.remain.split('       ');
+flowVars.inAPLI=flowVars.A.substring(201,flowVars.A.length());
+flowVars.array=new java.util.ArrayList();
+String p=flowVars.inAPLI;
+int b=0;
+for(int i=0;i<Math.round(p.length()/68)-1;i++){
+array.add(p.substring(0+b,68+b));
+b=b+68;
+}]]></expression-component>
+                                                <scatter-gather doc:name="Scatter-Gather">
+                                                    <foreach collection="#[flowVars.array]" doc:name="For Each">
+                                                        <choice doc:name="checking for info tag">
+                                                            <when expression="payload.contains('&lt;info&gt;&lt;/info&gt;');">
+                                                                <expression-component doc:name="Expression"><![CDATA[flowVars.DestinationICAO=payload.substring(0,4);
+flowVars.DestinationIATA=payload.substring(4,9);
+flowVars.SEPARATOR1=payload.substring(9,12);
+flowVars.ETOPS_INDICATOR=payload.substring(12,13);
+flowVars.TIME_INDICATOR=payload.substring(12,13);
+flowVars.WX_VALIDITY_FROM_DATE_UTC=payload.substring(13,22);
+flowVars.WX_VALIDITY_FROM_TIME_UTC=payload.substring(22,26);
+flowVars.WX_VALIDITY_TILL_DATE_UTC=payload.substring(26,35);
+flowVars.WX_VALIDITY_TILL_TIME_UTC=payload.substring(35,39);
+flowVars.SA_NUMBER=payload.substring(39,41);
+flowVars.FC_NUMBER=payload.substring(41,43);
+flowVars.FT_NUMBER=payload.substring(43,45);
+flowVars.SEPARATOR2=payload.substring(45,55);
+flowVars.INFO=payload.substring(55,61);
+flowVars.DAT='';
+flowVars.INFO1=payload.substring(61,68);]]></expression-component>
+                                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                                    <db:parameterized-query><![CDATA[insert INTO APLIREF_AIRPORT values(#[flowVars.DestinationICAO],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SEPARATOR1],#[flowVars.ETOPS_INDICATOR],#[flowVars.TIME_INDICATOR],#[flowVars.WX_VALIDITY_FROM_DATE_UTC],#[flowVars.WX_VALIDITY_FROM_TIME_UTC],#[flowVars.WX_VALIDITY_TILL_DATE_UTC],#[flowVars.WX_VALIDITY_TILL_TIME_UTC],#[flowVars.SA_NUMBER],#[flowVars.FC_NUMBER],#[flowVars.FT_NUMBER],#[flowVars.SEPARATOR2],#[flowVars.INFO],#[flowVars.DAT],#[flowVars.INFO1],current_Timestamp)]]></db:parameterized-query>
+                                                                </db:insert>
+                                                            </when>
+                                                            <otherwise>
+                                                                <logger level="INFO" doc:name="Logger"/>
+                                                            </otherwise>
+                                                        </choice>
+                                                    </foreach>
+                                                    <foreach collection="#[flowVars.last]" doc:name="For Each">
+                                                        <expression-component doc:name="Expression"><![CDATA[flowVars.FIR_URI=payload.substring(0,4);
+flowVars.SIGMENTVALIDITYFROMDATE_UTC=payload.substring(4,13);
+flowVars.SIGMENTVALIDITYFROM_TIME_UTC=payload.substring(13,17);
+flowVars.SIGMENTVALIDITYTILLDATE_UTC=payload.substring(17,26);
+flowVars.SIGMENTVALIDITYTILL_TIME_UTC=payload.substring(26,30);
+flowVars.NUMBEROFSEGMENTS=payload.substring(30,31);
+flowVars.separator3="       ";]]></expression-component>
+                                                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                            <db:parameterized-query><![CDATA[insert INTO APLIREF_FIR values(#[flowVars.FIR_URI],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SIGMENTVALIDITYFROMDATE_UTC],#[flowVars.SIGMENTVALIDITYFROM_TIME_UTC],#[flowVars.SIGMENTVALIDITYTILLDATE_UTC],#[flowVars.SIGMENTVALIDITYTILL_TIME_UTC],#[flowVars.NUMBEROFSEGMENTS],#[flowVars.separator3],current_Timestamp)]]></db:parameterized-query>
+                                                        </db:insert>
+                                                    </foreach>
+                                                    <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                        <db:parameterized-query><![CDATA[insert INTO APLI values(#[flowVars.INFO_TYPE],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.VERSION],#[flowVars.BLOCK_TIME_INDICATOR],#[flowVars.OFP_NUMBER],#[flowVars.RCL_NUMBER],#[flowVars.ETOPS_NUMBER],#[flowVars.STD_ETD_DATE_UTC],#[flowVars.STD_ETD_TIME_UTC],#[flowVars.SCHEDULED_BLOCK_TIME],#[flowVars.FLIGHT_TIME_DEP_DEST],#[flowVars.FLIGHT_TIME_DEP_DEP],#[flowVars.FLIGHT_TIME_DEST_ALT1],#[flowVars.FLIGHT_TIME_DEST_ALT2],#[flowVars.FLIGHT_TIME_DEST_ALT3],#[flowVars.FLIGHT_TIME_DEST_ALT4],#[flowVars.FLIGHT_TIME_DEP_RAP],#[flowVars.FLIGHT_TIME_RAP_RAP_ALT],#[flowVars.SEPARATOR1],#[flowVars.NUMBER_OF_DESTINATION],#[flowVars.NUMBER_OF_DEPARTURE],#[flowVars.NUMBER_OF_DESTINATION_ALTS],#[flowVars.NUMBER_OF_DEPARTURE_ALTS],#[flowVars.NUM_OF_ENROUTE_AIRPORTS],#[flowVars.NUM_OF_ETOPS_AIRPORTS],#[flowVars.RECLEARANCE_AIRPORT],#[flowVars.NUM_OF_RECLEARANCE_ALTS],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_1],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_2],#[flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS],#[flowVars.RECLEARNCEFUELENROUTEAIRPORTNO],#[flowVars.SEPARATOR2],#[flowVars.TOTAL_AIRPORTS],#[flowVars.TOTAL_FIRS],#[flowVars.REGISTRATION],#[flowVars.SEPARATOR3],current_Timestamp)]]></db:parameterized-query>
+                                                    </db:insert>
+                                                </scatter-gather>
+                                            </processor-chain>
+                                            <processor-chain>
+                                                <expression-component doc:name="WABI"><![CDATA[flowVars.Infotype='WABI';
+flowVars.unitofmeasure=flowVars.W.substring(0,1);
+flowVars.fuelorderstatus=flowVars.W.substring(1,3);
+flowVars.plannedtaxifuel=flowVars.W.substring(3,7);
+flowVars.plannedtripfuel=flowVars.W.substring(7,13);
+flowVars.blockedfuel=flowVars.W.substring(13,19);
+flowVars.plannedtriptime=flowVars.W.substring(19,23);
+flowVars.plannedtaxitime=flowVars.W.substring(23,27);
+flowVars.estimatedtotalflighttime=flowVars.W.substring(27,31);
+flowVars.Tankcapacity=flowVars.W.substring(31,37);
+flowVars.acRegistration=flowVars.W.substring(37,46);
+flowVars.ReclearenceIndicator=flowVars.W.substring(46,47);
+flowVars.maxlandingweight=flowVars.W.substring(47,53);
+flowVars.maxtakeoffweight=flowVars.W.substring(53,59);
+flowVars.maxtaxiweight=flowVars.W.substring(59,65);
+flowVars.plannedZFW=flowVars.W.substring(65,71);
+flowVars.maxZFW=flowVars.W.substring(71,77);
+flowVars.supplierGravity=flowVars.W.substring(77,83);
+flowVars.RemainingGravity=flowVars.W.substring(83,89);
+flowVars.DispatcherRemark=flowVars.W.substring(89,169);
+flowVars.FuelTrunkIndicator=flowVars.W.substring(169,170);
+flowVars.FuelTrunkStandBy=flowVars.W.substring(170,171);
+flowVars.RefuelingQuantity=flowVars.W.substring(171,177);
+flowVars.WABIREvisionNumber=flowVars.W.substring(177,179);
+flowVars.OFPNumber=flowVars.W.substring(179,181);
+flowVars.PlannedLoad=flowVars.W.substring(181,187);
+flowVars.NegativeZFW=flowVars.W.substring(187,193);
+flowVars.positiveZFW=flowVars.W.substring(193,199);
+flowVars.seperator2=flowVars.W.substring(199,203);
+flowVars.reducedLandingweight=flowVars.W.substring(203,211);
+flowVars.ReducedTakeoffweight=flowVars.W.substring(211,219);]]></expression-component>
+                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                    <db:parameterized-query><![CDATA[insert INTO LIDO_WABI values(#[flowVars.Infotype],#[flowVars.unitofmeasure],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.fuelorderstatus],#[flowVars.plannedtaxifuel],#[flowVars.plannedtripfuel],#[flowVars.blockedfuel],#[flowVars.plannedtriptime],#[flowVars.plannedtaxitime],#[flowVars.estimatedtotalflighttime],#[flowVars.Tankcapacity],#[flowVars.acRegistration],#[flowVars.ReclearenceIndicator],#[flowVars.maxlandingweight],#[flowVars.maxtakeoffweight],#[flowVars.maxtaxiweight],#[flowVars.plannedZFW],#[flowVars.maxZFW],#[flowVars.supplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTrunkIndicator],#[flowVars.FuelTrunkStandBy],#[flowVars.RefuelingQuantity],#[flowVars.WABIREvisionNumber],#[flowVars.OFPNumber],#[flowVars.PlannedLoad],#[flowVars.NegativeZFW],#[flowVars.positiveZFW],#[flowVars.seperator2],#[flowVars.reducedLandingweight],#[flowVars.ReducedTakeoffweight],current_Timestamp)]]></db:parameterized-query>
+                                                </db:insert>
+                                            </processor-chain>
+                                        </scatter-gather>
+                                    </when>
+                                    <when expression="payload.contains('WABI') &amp;&amp; payload.contains('SLOT') &amp;&amp; payload.contains('APLI')">
+                                        <expression-component doc:name="Expression"><![CDATA[//flowVars.multiple=payload.substring(92,1717);
+flowVars.W=payload.substring(169,388);
+flowVars.S=payload.substring(465,488);
+flowVars.A=payload.substring(565,payload.length());
+flowVars.msg=flowVars.A.substring(124,flowVars.A.length());
+flowVars.last1=payload.substring(payload.lastIndexOf('>',payload.length()-1),payload.length());
+flowVars.Last2=flowVars.last1.replace('>','');
+flowVars.last=flowVars.Last2.split('       ');
+flowVars.array=new java.util.ArrayList();
+String p=flowVars.msg;
+int b=0;
+for(int i=0;i<Math.round(p.length()/68)-1;i++){
+array.add(p.substring(0+b,68+b));
+b=b+68;
+}
+payload=flowVars.A.substring(0,124);
+flowVars.VERSION=payload.substring(0,4);
+flowVars.BLOCK_TIME_INDICATOR=payload.substring(4,5);
+flowVars.OFP_NUMBER=payload.substring(5,8);
+flowVars.RCL_NUMBER=payload.substring(8,10);
+flowVars.ETOPS_NUMBER=payload.substring(10,11);
+flowVars.STD_ETD_DATE_UTC=payload.substring(11,20);
+flowVars.STD_ETD_TIME_UTC=payload.substring(20,24);
+flowVars.SCHEDULED_BLOCK_TIME=payload.substring(24,28);
+flowVars.FLIGHT_TIME_DEP_DEST=payload.substring(28,32);
+flowVars.FLIGHT_TIME_DEP_DEP=payload.substring(32,36);
+flowVars.FLIGHT_TIME_DEST_ALT1=payload.substring(36,40);
+flowVars.FLIGHT_TIME_DEST_ALT2=payload.substring(40,44);
+flowVars.FLIGHT_TIME_DEST_ALT3=payload.substring(44,48);
+flowVars.FLIGHT_TIME_DEST_ALT4=payload.substring(48,52);
+flowVars.FLIGHT_TIME_DEP_RAP=payload.substring(52,56);
+flowVars.FLIGHT_TIME_RAP_RAP_ALT=payload.substring(56,60);
+flowVars.SEPARATOR1=payload.substring(60,68);
+flowVars.NUMBER_OF_DESTINATION=payload.substring(68,69);
+flowVars.NUMBER_OF_DEPARTURE=payload.substring(69,70);
+flowVars.NUMBER_OF_DESTINATION_ALTS=payload.substring(70,72);
+flowVars.NUM_OF_DEST_ADDITIONAL_ALTS=payload.substring(72,74);
+flowVars.NUMBER_OF_DEPARTURE_ALTS=payload.substring(74,76);
+flowVars.NUM_OF_ENROUTE_AIRPORTS=payload.substring(76,80);
+flowVars.NUM_OF_ETOPS_AIRPORTS=payload.substring(80,81);
+flowVars.RECLEARANCE_AIRPORT=payload.substring(81,82);
+flowVars.NUM_OF_RECLEARANCE_ALTS=payload.substring(82,84);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_1=payload.substring(84,87);
+flowVars.RECLEARNCEENROUTEAIRPORTNUM_2=payload.substring(88,89);
+flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS=payload.substring(87,88);
+flowVars.RECLEARNCEFUELENROUTEAIRPORTNO=payload.substring(88,89);
+flowVars.SEPARATOR2=payload.substring(92,101);
+flowVars.TOTAL_AIRPORTS=payload.substring(101,105);
+flowVars.TOTAL_FIRS=payload.substring(105,107);
+flowVars.REGISTRATION=payload.substring(107,116);
+flowVars.SEPARATOR3=payload.substring(116,124);]]></expression-component>
+                                        <scatter-gather doc:name="Scatter-Gather">
+                                            <processor-chain>
+                                                <expression-component doc:name="WABI"><![CDATA[flowVars.Infotype='WABI';
+flowVars.unitofmeasure=flowVars.W.substring(0,1);
+flowVars.fuelorderstatus=flowVars.W.substring(1,3);
+flowVars.plannedtaxifuel=flowVars.W.substring(3,7);
+flowVars.plannedtripfuel=flowVars.W.substring(7,13);
+flowVars.blockedfuel=flowVars.W.substring(13,19);
+flowVars.plannedtriptime=flowVars.W.substring(19,23);
+flowVars.plannedtaxitime=flowVars.W.substring(23,27);
+flowVars.estimatedtotalflighttime=flowVars.W.substring(27,31);
+flowVars.Tankcapacity=flowVars.W.substring(31,37);
+flowVars.acRegistration=flowVars.W.substring(37,46);
+flowVars.ReclearenceIndicator=flowVars.W.substring(46,47);
+flowVars.maxlandingweight=flowVars.W.substring(47,53);
+flowVars.maxtakeoffweight=flowVars.W.substring(53,59);
+flowVars.maxtaxiweight=flowVars.W.substring(59,65);
+flowVars.plannedZFW=flowVars.W.substring(65,71);
+flowVars.maxZFW=flowVars.W.substring(71,77);
+flowVars.supplierGravity=flowVars.W.substring(77,83);
+flowVars.RemainingGravity=flowVars.W.substring(83,89);
+flowVars.DispatcherRemark=flowVars.W.substring(89,169);
+flowVars.FuelTrunkIndicator=flowVars.W.substring(169,170);
+flowVars.FuelTrunkStandBy=flowVars.W.substring(170,171);
+flowVars.RefuelingQuantity=flowVars.W.substring(171,177);
+flowVars.WABIREvisionNumber=flowVars.W.substring(177,179);
+flowVars.OFPNumber=flowVars.W.substring(179,181);
+flowVars.PlannedLoad=flowVars.W.substring(181,187);
+flowVars.NegativeZFW=flowVars.W.substring(187,193);
+flowVars.positiveZFW=flowVars.W.substring(193,199);
+flowVars.seperator2=flowVars.W.substring(199,203);
+flowVars.reducedLandingweight=flowVars.W.substring(203,211);
+flowVars.ReducedTakeoffweight=flowVars.W.substring(211,219);]]></expression-component>
+                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                    <db:parameterized-query><![CDATA[insert INTO LIDO_WABI values(#[flowVars.Infotype],#[flowVars.unitofmeasure],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.fuelorderstatus],#[flowVars.plannedtaxifuel],#[flowVars.plannedtripfuel],#[flowVars.blockedfuel],#[flowVars.plannedtriptime],#[flowVars.plannedtaxitime],#[flowVars.estimatedtotalflighttime],#[flowVars.Tankcapacity],#[flowVars.acRegistration],#[flowVars.ReclearenceIndicator],#[flowVars.maxlandingweight],#[flowVars.maxtakeoffweight],#[flowVars.maxtaxiweight],#[flowVars.plannedZFW],#[flowVars.maxZFW],#[flowVars.supplierGravity],#[flowVars.RemainingGravity],#[flowVars.DispatcherRemark],#[flowVars.FuelTrunkIndicator],#[flowVars.FuelTrunkStandBy],#[flowVars.RefuelingQuantity],#[flowVars.WABIREvisionNumber],#[flowVars.OFPNumber],#[flowVars.PlannedLoad],#[flowVars.NegativeZFW],#[flowVars.positiveZFW],#[flowVars.seperator2],#[flowVars.reducedLandingweight],#[flowVars.ReducedTakeoffweight],current_Timestamp)]]></db:parameterized-query>
+                                                </db:insert>
+                                            </processor-chain>
+                                            <processor-chain>
+                                                <expression-component doc:name="SLOT"><![CDATA[flowVars.Infotype='SLOT';
+flowVars.ndata=flowVars.S;]]></expression-component>
+                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                    <db:parameterized-query><![CDATA[insert INTO SLOT values(#[flowVars.Infotype],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.ndata],current_Timestamp)]]></db:parameterized-query>
+                                                </db:insert>
+                                            </processor-chain>
+                                            <processor-chain>
+                                                <expression-component doc:name="APLI"><![CDATA[flowVars.Infotype='APLI';
+flowVars.msg=flowVars.A.substring(124,flowVars.A.length());
+flowVars.last1=flowVars.A.substring(flowVars.A.lastIndexOf('>',flowVars.A.length()-1),flowVars.A.length());
+flowVars.Last2=flowVars.last1.replace('>','');
+flowVars.last=flowVars.Last2.split('       ');
+
+]]></expression-component>
+                                                <scatter-gather doc:name="Scatter-Gather">
+                                                    <foreach collection="#[flowVars.array]" doc:name="For Each">
+                                                        <choice doc:name="Choice">
+                                                            <when expression="payload.contains('&lt;info&gt;&lt;/info&gt;');">
+                                                                <expression-component doc:name="Expression"><![CDATA[flowVars.DestinationICAO=payload.substring(0,4);
+flowVars.DestinationIATA=payload.substring(4,9);
+flowVars.SEPARATOR1=payload.substring(9,12);
+flowVars.ETOPS_INDICATOR=payload.substring(12,13);
+flowVars.TIME_INDICATOR=payload.substring(12,13);
+flowVars.WX_VALIDITY_FROM_DATE_UTC=payload.substring(13,22);
+flowVars.WX_VALIDITY_FROM_TIME_UTC=payload.substring(22,26);
+flowVars.WX_VALIDITY_TILL_DATE_UTC=payload.substring(26,35);
+flowVars.WX_VALIDITY_TILL_TIME_UTC=payload.substring(35,39);
+flowVars.SA_NUMBER=payload.substring(39,41);
+flowVars.FC_NUMBER=payload.substring(41,43);
+flowVars.FT_NUMBER=payload.substring(43,45);
+flowVars.SEPARATOR2=payload.substring(45,55);
+flowVars.INFO=payload.substring(55,61);
+flowVars.DAT='';
+flowVars.INFO1=payload.substring(61,68);]]></expression-component>
+                                                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                                    <db:parameterized-query><![CDATA[insert INTO APLIREF_AIRPORT values(#[flowVars.DestinationICAO],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SEPARATOR1],#[flowVars.ETOPS_INDICATOR],#[flowVars.TIME_INDICATOR],#[flowVars.WX_VALIDITY_FROM_DATE_UTC],#[flowVars.WX_VALIDITY_FROM_TIME_UTC],#[flowVars.WX_VALIDITY_TILL_DATE_UTC],#[flowVars.WX_VALIDITY_TILL_TIME_UTC],#[flowVars.SA_NUMBER],#[flowVars.FC_NUMBER],#[flowVars.FT_NUMBER],#[flowVars.SEPARATOR2],#[flowVars.INFO],#[flowVars.DAT],#[flowVars.INFO1],current_Timestamp)]]></db:parameterized-query>
+                                                                </db:insert>
+                                                            </when>
+                                                            <otherwise>
+                                                                <logger level="INFO" doc:name="Logger"/>
+                                                            </otherwise>
+                                                        </choice>
+                                                    </foreach>
+                                                    <foreach collection="#[flowVars.last]" doc:name="For Each">
+                                                        <expression-component doc:name="Expression"><![CDATA[flowVars.FIR_URI=payload.substring(0,4);
+flowVars.SIGMENTVALIDITYFROMDATE_UTC=payload.substring(4,13);
+flowVars.SIGMENTVALIDITYFROM_TIME_UTC=payload.substring(13,17);
+flowVars.SIGMENTVALIDITYTILLDATE_UTC=payload.substring(17,26);
+flowVars.SIGMENTVALIDITYTILL_TIME_UTC=payload.substring(26,30);
+flowVars.NUMBEROFSEGMENTS=payload.substring(30,31);
+flowVars.separator3="       ";]]></expression-component>
+                                                        <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                            <db:parameterized-query><![CDATA[insert INTO APLIREF_FIR values(#[flowVars.FIR_URI],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.SIGMENTVALIDITYFROMDATE_UTC],#[flowVars.SIGMENTVALIDITYFROM_TIME_UTC],#[flowVars.SIGMENTVALIDITYTILLDATE_UTC],#[flowVars.SIGMENTVALIDITYTILL_TIME_UTC],#[flowVars.NUMBEROFSEGMENTS],#[flowVars.separator3],current_Timestamp)]]></db:parameterized-query>
+                                                        </db:insert>
+                                                    </foreach>
+                                                    <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                                        <db:parameterized-query><![CDATA[insert INTO APLI values(#[flowVars.INFO_TYPE],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.VERSION],#[flowVars.BLOCK_TIME_INDICATOR],#[flowVars.OFP_NUMBER],#[flowVars.RCL_NUMBER],#[flowVars.ETOPS_NUMBER],#[flowVars.STD_ETD_DATE_UTC],#[flowVars.STD_ETD_TIME_UTC],#[flowVars.SCHEDULED_BLOCK_TIME],#[flowVars.FLIGHT_TIME_DEP_DEST],#[flowVars.FLIGHT_TIME_DEP_DEP],#[flowVars.FLIGHT_TIME_DEST_ALT1],#[flowVars.FLIGHT_TIME_DEST_ALT2],#[flowVars.FLIGHT_TIME_DEST_ALT3],#[flowVars.FLIGHT_TIME_DEST_ALT4],#[flowVars.FLIGHT_TIME_DEP_RAP],#[flowVars.FLIGHT_TIME_RAP_RAP_ALT],#[flowVars.SEPARATOR1],#[flowVars.NUMBER_OF_DESTINATION],#[flowVars.NUMBER_OF_DEPARTURE],#[flowVars.NUMBER_OF_DESTINATION_ALTS],#[flowVars.NUMBER_OF_DEPARTURE_ALTS],#[flowVars.NUM_OF_ENROUTE_AIRPORTS],#[flowVars.NUM_OF_ETOPS_AIRPORTS],#[flowVars.RECLEARANCE_AIRPORT],#[flowVars.NUM_OF_RECLEARANCE_ALTS],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_1],#[flowVars.RECLEARNCEENROUTEAIRPORTNUM_2],#[flowVars.NUM_OF_FUEL_ENROUTE_AIRPORTS],#[flowVars.RECLEARNCEFUELENROUTEAIRPORTNO],#[flowVars.SEPARATOR2],#[flowVars.TOTAL_AIRPORTS],#[flowVars.TOTAL_FIRS],#[flowVars.REGISTRATION],#[flowVars.SEPARATOR3],current_Timestamp)]]></db:parameterized-query>
+                                                    </db:insert>
+                                                </scatter-gather>
+                                            </processor-chain>
+                                        </scatter-gather>
+                                    </when>
+                                    <otherwise>
+                                        <logger level="INFO" doc:name="Logger"/>
+                                    </otherwise>
+                                </choice>
+                                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                                    <db:parameterized-query><![CDATA[insert INTO LIDO_LOCK values(#[flowVars.INFOTYPE],#[flowVars.FlightNumber],#[flowVars.DateofOriginUTC],#[flowVars.DepartureAirport],#[flowVars.DestinationAirport],#[flowVars.FlightDuplicationNo],#[flowVars.BriefingSequenceNo],#[flowVars.TransmissionNo],#[flowVars.CONFIRMATION_INDICATOR],#[flowVars.RECALCULATION_INDICATOR_AOS],#[flowVars.SEPARATOR2],#[flowVars.Datemessage])]]></db:parameterized-query>
+                                </db:insert>
+                            </scatter-gather>
+                        </when>
+                        <otherwise>
+                            <logger message="selected infotype not their" level="INFO" doc:name="Logger"/>
+                        </otherwise>
+                    </choice>
+                </when>
+                <otherwise>
+                    <set-variable variableName="exception" value="#[payload][pvgrk]" doc:name="raising exception"/>
+                </otherwise>
+            </choice>
+        </scatter-gather>
+
+
+        <choice-exception-strategy doc:name="Choice Exception Strategy">
+            <catch-exception-strategy doc:name="Catch Exception Strategy">
+                <choice doc:name="Choice">
+                    <when expression="flowVars.error!='null'">
+                        <set-payload value="#[flowVars.error] is wrong" doc:name="Set Payload"/>
+                    </when>
+                    <when expression="  flowVars.daterror!='null'">
+                        <set-payload value="#[flowVars.daterror] is wrong date" doc:name="Set Payload"/>
+                    </when>
+                    <otherwise>
+                        <set-payload value="#['file data ia wrong']" doc:name="Set Payload"/>
+                    </otherwise>
+                </choice>
+                <set-attachment attachmentName="error" value="#[payload]" contentType="text/plain" doc:name="Attachment"/>
+                <scatter-gather doc:name="Scatter-Gather">
+                    <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="pvgravikumar.eidiko@gmail.com" password="9440069004" connector-ref="Gmail" to="prashanth9.eidiko@gmail.com" from="pvgravikumar.eidiko@gmail.com" subject="error" responseTimeout="10000" doc:name="SMTP"/>
+                    <file:outbound-endpoint responseTimeout="10000" doc:name="File" connector-ref="File4" path="/r"/>
+                </scatter-gather>
+            </catch-exception-strategy>
+        </choice-exception-strategy>
+        
+
+    </flow>
+</mule>
